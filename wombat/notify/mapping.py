@@ -1,4 +1,4 @@
-from .notification import Test
+from .notification import *
 
 NOTIFY_MAPPING = {
   1: Test

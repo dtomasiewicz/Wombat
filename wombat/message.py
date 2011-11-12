@@ -1,6 +1,6 @@
 from struct import pack, unpack
 
-# generic control action (sends a UTF-8 string)
+# generic control action (does not carry any data; just the op code)
 class Message:
   STR_ENC = 'UTF-8'
   

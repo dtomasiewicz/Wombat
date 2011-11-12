@@ -1,5 +1,5 @@
-from .action import GetIdentity, Identify, Login, Logout, Quit, CharSelect, CharQuit
-from .response import Identity, Success, InvalidAction, InvalidIdentity, RemapNotify
+from .action import *
+from .response import *
 
 ACTION_MAPPING = {
   1: GetIdentity,
