@@ -1,0 +1,42 @@
+Lag Compensation
+
+2 players A, B are in combat against each other. Player begins to cast a 3 sec
+spell. In the first scenario (S1), the cast completes successfully. In the other
+scenario (S2), player B attempts to interrupt the cast 2 seconds after they are 
+notified of it.
+
+For each scenario, we look at four cases:
+  Ideal: both players experience no latency (LAN or same machine)
+    RTTa = RTTb = 0
+  Typical: both players experiencing normal latency
+    RTTa = RTTb = .15
+  CastLag: caster has unusually high latency
+    RTTa = .5, RTTb = .15
+  IntLag: interrupter has unusually high latency
+    RTTa = .15, RTTb = .5
+  Extreme: both caster and interrupter have unusually high latency
+    RTTa = RTTb = .5
+  
+  Optimization for cases follows this priority:
+    1. Typical (most important)
+    2. IntLag = CastLag
+    3. Extreme (least important)
+    4. Ideal (insignificant)
+
+Scenario 1: B does not attempt interrupt
+  Server Time      Event                                                   Ideal Typical CastLag IntLag Extreme
+  0                A casts spell, reports cast time as 3 + RTTa/2          0     0       0       0      0
+  RTTa/2           Server receives cast message, sends notification to B   0     .075    .25     .075   .25
+  RTTa/2 + RTTb/2  B receives notification of cast                         0     .15     .325    .325   .5
+  RTTa/2 + 3       Spell cast complete with all parties roughly in sync    0     3.075   3.25    3.075  3.25
+  
+Scenario 2: B attempts to interrupt
+  Server Time           Event                                                     Ideal Typical CastLag IntLag Extreme
+  0                     A casts spell, reports cast time as 3 + RTTa/2            0     0       0       0      0
+  RTTa/2                Server receives cast message, sends notification to B     0     .075    .25     .075   .25
+  RTTa/2 + RTTb/2       B receives notification of cast, assumes RTTb/2 complete  0     .15     .325    .325   .5
+  RTTa/2 + RTTb/2 + 2   B sends interrupt message                                 2     2.15    2.325   2.325  2.5
+  RTTa/2 + RTTb + 2     Server receives interrupt message                         2     2.225   2.4     2.575  2.75
+                        Accept: time < RTTa/2 + 3?                                Yes   Yes     Yes     Yes    Yes
+  RTTa + RTTb + 2       A is notified of interrupt                                2     2.3     2.65    2.65   3
+  RTTa/2 + 3RTTb/2 + 2  B is notified of interrupt success                        2     2.3     2.475   2.825  3
