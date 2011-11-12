@@ -2,6 +2,7 @@
 #
 # Runs a combat server
 
+from random import randrange
 from wombat.stream import Stream
 from wombat.control.mapping import RESPONSE_MAPPING, ACTION_MAPPING
 from wombat.control.action import Identify
@@ -28,7 +29,11 @@ class CombatServer:
     Thread(target=self.spawnclient, args=(control,)).start()
   
   def spawnclient(self, control):
-    identity = len(self.clients)
+    while 1:
+      identity = randrange(65535) # max short value
+      if not self.clients.get(identity, None):
+        break
+    
     self.clients[identity] = client = Client(self, identity, control)
     client.start()
     # client is disconnected; clean up
@@ -59,4 +64,4 @@ class CombatServer:
   
 
 if __name__ == "__main__":
-  CombatServer().start("127.0.0.1", 9994, 10004)
+  CombatServer().start("127.0.0.1", 10000, 10001)

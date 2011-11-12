@@ -14,6 +14,7 @@ class CombatClient:
     self.control = Stream(send=ACTION_MAPPING, recv=RESPONSE_MAPPING)
     self.notify = Stream()
     self.identity = None
+    self.debug = []
   
   def start(self, host, port, nport):
     self.control.connect(host, port)
@@ -21,9 +22,9 @@ class CombatClient:
     if res.istype(Identity):
       self.identity = res.identity
       Thread(target=self.nstart, args=(host, nport)).start()
-      print("Received client identity: {0}".format(self.identity))
+      self.debug.append("Received client identity: {0}".format(self.identity))
     else:
-      print("Failed to retrieve identity from server.")
+      self.debug.append("Failed to retrieve identity from server.")
   
   def nstart(self, host, port):
     self.notify.setmapping(send=ACTION_MAPPING, recv=RESPONSE_MAPPING)
@@ -31,7 +32,7 @@ class CombatClient:
     self.notify.send(Identify(self.identity))
     res = self.notify.recv()
     if res.istype(RemapNotify):
-      print("Notify connection opened.")
+      self.debug.append("Notify connection opened.")
       self.notify.setmapping(recv=NOTIFY_MAPPING, send={})
       
       while 1:
@@ -41,53 +42,45 @@ class CombatClient:
         else:
           break
     else:
-      print("Failed to open notify connection.")
+      self.debug.append("Failed to open notify connection.")
   
   def nhandle(self, n):
     ### todo
-    print("Received notification: {0}".format(n.__class__))
+    self.debug.append("Received notification: {0}".format(n.__class__))
   
   def login(self, user, password):
     if self.control.sendrecv(Login(user, password)).SUCCESS:
-      print("Login success: {0}".format(user))
+      self.debug.append("Login success: {0}".format(user))
     else:
-      print("Login failure: {0}".format(user))
+      self.debug.append("Login failure: {0}".format(user))
   
   def charselect(self, char):
     if self.control.sendrecv(CharSelect(char)).SUCCESS:
-      print("Character selected: {0}".format(char))
+      self.debug.append("Character selected: {0}".format(char))
     else:
-      print("Failed to select character: {0}.".format(char))
+      self.debug.append("Failed to select character: {0}.".format(char))
   
   def charquit(self):
     if self.control.sendrecv(CharQuit()).SUCCESS:
-      print("Character quit success.")
+      self.debug.append("Character quit success.")
     else:
-      print("Character quit failure.")
+      self.debug.append("Character quit failure.")
   
   def logout(self):
     if self.control.sendrecv(Logout()).SUCCESS:
-      print("Logout success.")
+      self.debug.append("Logout success.")
     else:
-      print("Logout failure.")
+      self.debug.append("Logout failure.")
     
   def quit(self):
     if self.control.sendrecv(Quit()).SUCCESS:
       self.control.close()
       self.notify.close()
-      print("Quit success.")
+      self.debug.append("Quit success.")
     else:
-      print("Quit failure.")
+      self.debug.append("Quit failure.")
   
 
 if __name__ == '__main__':
-  c = CombatClient()
-  c.start('127.0.0.1', 9994, 10004)
-  c.login('Daniel', 'Test')
-  c.charselect("Blastoise")
-  c.charquit()
-  c.logout()
-  c.login('John', 'Hancock')
-  c.quit()
-  c.logout()
-  c.quit()
+  from cli import ClientShell
+  ClientShell().cmdloop()

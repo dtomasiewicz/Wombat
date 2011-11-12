@@ -8,7 +8,7 @@ class GetIdentity(Action):
   pass
 
 # Type(bytelen)  Data
-# bytes(8)       client ID
+# short          client ID
 class Identify(Action):
   SIMPLE = False
   

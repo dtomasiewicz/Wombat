@@ -5,7 +5,7 @@ class Stream:
   
   def __init__(self, sock=None, addr=None, send=None, recv=None):
     self.socket = sock or socket(AF_INET, SOCK_STREAM)
-    self.address = address
+    self.address = addr
     self.setmapping(send, recv)
   
   def connect(self, host, port):
