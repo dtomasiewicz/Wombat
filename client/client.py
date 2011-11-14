@@ -9,7 +9,7 @@ from wombat.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
 from wombat.control.action import *
 from wombat.control.response import *
 from wombat.notify.mapping import NOTIFY_MAPPING
-from wombat.notify.notification import NotifyKey
+from wombat.notify.notification import *
 
 class CombatClient:
   def __init__(self):
@@ -30,7 +30,7 @@ class CombatClient:
   def nstart(self, host, port):
     self.snotify.connect((host, port))
     key = self.notify.recv()
-    if key.istype(NotifyKey):
+    if isinstance(key, NotifyKey):
       res = self.control.sendrecv(ClaimNotify(key.key))
       if res.SUCCESS:
         while 1:
@@ -45,8 +45,10 @@ class CombatClient:
       self.debug("Failed to receive ClaimKey on notify connection.")
   
   def nhandle(self, n):
-    ### todo
-    self.debug("Received notification: {0}".format(n.__class__))
+    if isinstance(n, RecvMessage):
+      self.debug("[{0}]: {1}".format(n.char, n.message))
+    else:
+      self.debug("Received notification: {0}".format(n.__class__))
   
   def login(self, user, password):
     if self.control.sendrecv(Login(user, password)).SUCCESS:
@@ -82,6 +84,14 @@ class CombatClient:
       self.debug("Quit failure.")
       return False
   
+  def sendmessage(self, char, message):
+    res = self.control.sendrecv(SendMessage(char, message))
+    if res.SUCCESS:
+      self.debug("Message sent.")
+    elif isinstance(res, CharNoExists):
+      self.debug("Character does not exist: {0}".format(res.char))
+    else:
+      self.debug("Failed to send message.")
 
 if __name__ == '__main__':
   from argparse import ArgumentParser

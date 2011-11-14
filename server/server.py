@@ -6,6 +6,7 @@ from random import randrange
 from wombat.stream import Stream
 from wombat.notify.mapping import NOTIFY_MAPPING
 from wombat.notify.notification import NotifyKey
+from wombat.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
 from client import Client
 from threading import Thread
 from select import select
@@ -17,28 +18,37 @@ class CombatServer:
   def __init__(self):
     # map of clients by their control sockets
     self.clients = {}
-    # list of anonymous notify sockets (not yet associated with a client)
+    
+    # map of anonymous notify streams by their claim key
     self.anstreams = {}
     
-    # listener sockets for control and notify sockets
+    # list of connections to be closed after select() completes
+    self.closebuffer = []
+    
+    # listener sockets for incoming control and notify connections
     self.clistens = socket(AF_INET, SOCK_STREAM)
     self.nlistens = socket(AF_INET, SOCK_STREAM)
   
+  def debug(self, message):
+    print(message)
+  
   def start(self, host, cport, nport):
-    # listen for incoming control connections
     Thread(target=self.clisten, args=(host, cport)).start()
-    
-    # listen for incoming notify connections
     Thread(target=self.nlisten, args=(host, nport)).start()
     
-    # handle sockets that are ready for reading
+    # process client actions
     while 1:
       if len(self.clients):
-        for sock in select(self.clients.keys(),[],[])[0]:
-          Thread(self.clients[sock].act())
+        # must pass 0 as timeout so new clients will always be checked
+        for sock in select(self.clients.keys(), [], [], 0)[0]:
+          Thread(target=self.clients[sock].act).start()
+      
+      # potential source of action processing lag
+      while len(self.closebuffer):
+        self.closebuffer[0].close()
   
   def claimnotify(self, key):
-    print("in claimnotify")
+    """ Claims an anonymous notify socket, returning and dereferencing it. """
     notify = self.anstreams.get(key, None)
     if notify:
       del self.anstreams[key]
@@ -46,39 +56,52 @@ class CombatServer:
     else:
       return None
   
-  # listens for incoming control connections
   def clisten(self, host, port):
+    """ Listens for incoming control connections. """
     self.clistens.bind((host, port))
     self.clistens.listen(self.LISTEN_BACKLOG)
     while 1:
       sock, addr = self.clistens.accept()
-      self.connect(sock)
+      self.connect(sock, addr)
   
-  # listens for incoming notify connections and appends them to the list of
-  # anonymous notify streams, later to be claimed by a client
   def nlisten(self, host, port):
+    """
+    Listens for incoming notify connections and adds them to the list of 
+    anonymous notify streams, to later be claimed by a client.
+    """
     self.nlistens.bind((host, port))
     self.nlistens.listen(self.LISTEN_BACKLOG)
     while 1:
       sock, addr = self.nlistens.accept()
-      key = randrange(65535)
+      key = randrange(65535) # this will need to be more secure in the future
       self.anstreams[key] = Stream(sock, send=NOTIFY_MAPPING)
       self.anstreams[key].send(NotifyKey(key))
   
-  # connects a client, given its control socket, returning the client identity
-  def connect(self, control):
-    self.clients[control] = Client(self, control)
-    print("Client {0} connected".format(id(control)))
+  def connect(self, control, addr):
+    """ Connects a client, given its control socket and address. """
+    self.clients[control] = Client(self, Stream(control, recv=ACTION_MAPPING, 
+                                                send=RESPONSE_MAPPING), addr)
+    self.clients[control].debug("Connected")
   
-  # disconnects a client, given its control socket
   def disconnect(self, control):
+    """ Disconnects a client, given its control socket. """
     client = self.clients.get(control, None)
     if client:
       del self.clients[control] # delete first so no more actions
-      control.close()
+      self.closebuffer.append(control.close()) # in case used in select()
       if client.notify:
         client.notify.socket.close()
-      print("Client {0} disconnected".format(id(control)))
+      client.debug("Disconnected")
+  
+  def clientbychar(self, char):
+    """
+    Returns a client, given their character name. When we want to get serious 
+    about this, we should map them. For now, this O(n) algo is cleaner.
+    """
+    for c in self.clients.values():
+      if c.char == char:
+        return c
+    return None
 
 if __name__ == "__main__":
   CombatServer().start("127.0.0.1", 10000, 10001)

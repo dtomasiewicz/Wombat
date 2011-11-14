@@ -1,30 +1,38 @@
-from threading import Thread
-from wombat.stream import Stream
-from wombat.control.action import ClaimNotify, Login, Logout, Quit, CharSelect, CharQuit
-from wombat.control.response import Success, InvalidAction
-from wombat.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
-from wombat.notify.notification import Test
+from wombat.control.action import *
+from wombat.control.response import *
+from wombat.notify.notification import *
 
 class Client:
-  # control stream should have control mappings
-  def __init__(self, server, control):
+  """ Handles all actions that a client machine can perform. """
+  
+  def __init__(self, server, control, address):
     self.server = server
-    self.control = Stream(control, recv=ACTION_MAPPING, send=RESPONSE_MAPPING)
+    self.control = control
+    self.address = address
     self.notify = None
     self.user = None
     self.char = None
     self.state = self.sinitial
   
   def sendnotify(self, msg):
+    """ Sends the the given Notification message to the client. """
     if self.notify:
       self.notify.send(msg)
     else:
-      print("Warning: failed to notify client {0} of {1}".format(id(self.control.socket), msg.__class__))
+      self.debug("Failed to be notified of {0}".format(msg.__class__))
   
-  # return True if client should disconnect
+  def identity(self):
+    """ Unique string identifying the client, composed of socket id and IP. """
+    return "{0}@{1}".format(id(self.control.socket), self.address[0])
+  
+  def debug(self, msg):
+    """ Sends client-relevant debugging info to the server. """
+    self.server.debug("{0}: {1}".format(self.identity(), msg))
+  
   def act(self):
+    """ Handles an Action message received from the client. """
     action = self.control.recv()
-    if action and action.istype(ClaimNotify):
+    if action and isinstance(action, ClaimNotify):
       self.notify = self.server.claimnotify(action.key)
       if self.notify:
         self.control.send(Success())
@@ -33,35 +41,39 @@ class Client:
     elif not action or self.state(action) == True:
       self.server.disconnect(self.control.socket)
   
-  # initial client state
   def sinitial(self, action):
-    if action.istype(Login):
+    """
+    Client state after opening the client application.
+    Valid actions: Login, Quit
+    """
+    if isinstance(action, Login):
       self.user = action.user
-      print("{0} logged in to client: {1}".format(self.user, id(self.control.socket)))
+      self.debug("Logged in as {0}".format(self.user))
       self.state = self.sloggedin
       self.control.send(Success())
-      self.sendnotify(Test())
       
-    elif action.istype(Quit):
-      print("Client quit: {0}".format(id(self.control.socket)))
+    elif isinstance(action, Quit):
+      self.debug("Quit")
       self.control.send(Success())
       return True
       
     else:
       self.control.send(InvalidAction())
   
-  # client logged in
-  # accepts CharSelect, Logout
   def sloggedin(self, action):
-    if action.istype(Logout):
-      print("{0} logged out.".format(self.user))
+    """
+    Client state after logging in.
+    Valid actions: Logout, CharSelect
+    """
+    if isinstance(action, Logout):
+      self.debug("Logged out")
       self.user = None
       self.state = self.sinitial
       self.control.send(Success())
         
-    elif action.istype(CharSelect):
+    elif isinstance(action, CharSelect):
       self.char = action.char
-      print("{0} selected {1}.".format(self.user, self.char))
+      self.debug("Selected {0}".format(self.char))
       self.state = self.scharselected
       self.control.send(Success())
       
@@ -69,11 +81,24 @@ class Client:
       self.control.send(InvalidAction())
   
   def scharselected(self, action):
-    if action.istype(CharQuit):
-      print("{0} deselected {1}.".format(self.user, self.char))
+    """
+    Client state after selecting a character.
+    Valid actions: CharQuit, SendMessage
+    """
+    if isinstance(action, CharQuit):
+      self.debug("Deselected {0}".format(self.char))
       self.char = None
       self.state = self.sloggedin
       self.control.send(Success())
       
+    elif isinstance(action, SendMessage):
+      char = self.server.clientbychar(action.char)
+      if char:
+        self.debug("Messaged {0}".format(action.char))
+        char.sendnotify(RecvMessage(self.char, action.message))
+        self.control.send(Success())
+      else:
+        self.control.send(CharNoExists(action.char))
+    
     else:
       self.control.send(InvalidAction())

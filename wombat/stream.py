@@ -1,13 +1,16 @@
 from struct import pack, unpack
 
-# wraps a connected socket for communication with the given send/recv protocols
 class Stream:
-  
+  """
+  Wraps a connected socket for transmission translation as specified by send
+  and receive protol descriptions.
+  """
   def __init__(self, socket, send={}, recv={}):
     self.socket = socket
     self.setmapping(send, recv)
   
   def setmapping(self, send=None, recv=None):
+    """ Sets the mapping (send and receive protocols) for this stream. """
     if send != None:
       # send map is inverted for class->opcode translation
       self.sendmap = dict((c,o) for o,c in send.items())
@@ -15,6 +18,10 @@ class Stream:
       self.recvmap = recv
   
   def send(self, message):
+    """
+    Translates a Message into bytes based on the send mapping and sends these 
+    bytes over the socket.
+    """
     if message.SIMPLE:
       fmt = ''
       data = []
@@ -24,6 +31,10 @@ class Stream:
     return self.socket.send(packed)
   
   def recv(self):
+    """
+    Constructs a Message from bytes read in through the socket, based on the
+    receive mapping.
+    """
     op = self.recvshort()
     if op:
       opclass = self.recvmap.get(op, None)
@@ -35,6 +46,10 @@ class Stream:
       return None
   
   def sendrecv(self, message):
+    """
+    Both sends a Message and receives a response Message, which is
+    returned.
+    """
     if self.send(message):
       return self.recv()
     else:

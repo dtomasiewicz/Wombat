@@ -48,7 +48,6 @@ class Logout(Action):
 class Quit(Action):
   pass
 
-
 # Type(bytelen)  Data
 # short          character name byte-length (l)
 # string(l)      character name
@@ -68,3 +67,27 @@ class CharSelect(Action):
 
 class CharQuit(Action):
   pass
+
+# Type(bytelen)  Data
+# short          character name byte-length (c)
+# string(c)      character name
+# short          message byte-length (m)
+# string(m)      message
+class SendMessage(Action):
+  SIMPLE = False
+  
+  def __init__(self, char, message):
+    self.char = char
+    self.message = message
+
+  def pack(self):
+    cb = bytes(self.char, self.STR_ENC)
+    cl = len(cb)
+    mb = bytes(self.message, self.STR_ENC)
+    ml = len(mb)
+    return ('H{0}sH{1}s'.format(cl, ml), cl, cb, ml, mb)
+  
+  def unpack(stream):
+    char = stream.recvstring(stream.recvshort(), __class__.STR_ENC)
+    message = stream.recvstring(stream.recvshort(), __class__.STR_ENC)
+    return SendMessage(char, message)
