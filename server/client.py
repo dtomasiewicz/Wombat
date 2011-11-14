@@ -15,11 +15,12 @@ class Client:
     self.state = self.sinitial
   
   def sendnotify(self, msg):
-    """ Sends the the given Notification message to the client. """
-    if self.notify:
-      self.notify.send(msg)
-    else:
-      self.debug("Failed to be notified of {0}".format(msg.__class__))
+    with self.notify.lock:
+      """ Sends the the given Notification message to the client. """
+      if self.notify:
+        self.notify.send(msg)
+      else:
+        self.debug("Failed to be notified of {0}".format(msg.__class__))
   
   def identity(self):
     """ Unique string identifying the client, composed of socket id and IP. """
@@ -31,15 +32,16 @@ class Client:
   
   def act(self):
     """ Handles an Action message received from the client. """
-    action = self.control.recv()
-    if action and isinstance(action, ClaimNotify):
-      self.notify = self.server.claimnotify(action.key)
-      if self.notify:
-        self.control.send(Success())
-      else:
-        self.control.send(InvalidNotifyKey())
-    elif not action or self.state(action) == True:
-      self.server.disconnect(self.control.socket)
+    with self.control.lock:
+      action = self.control.recv()
+      if action and isinstance(action, ClaimNotify):
+        self.notify = self.server.claimnotify(action.key)
+        if self.notify:
+          self.control.send(Success())
+        else:
+          self.control.send(InvalidNotifyKey())
+      elif not action or self.state(action) == True:
+        self.server.disconnect(self.control.socket)
   
   def sinitial(self, action):
     """

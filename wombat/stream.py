@@ -1,4 +1,5 @@
 from struct import pack, unpack
+from threading import Lock
 
 class Stream:
   """
@@ -8,6 +9,7 @@ class Stream:
   def __init__(self, socket, send={}, recv={}):
     self.socket = socket
     self.setmapping(send, recv)
+    self.lock = Lock()
   
   def setmapping(self, send=None, recv=None):
     """ Sets the mapping (send and receive protocols) for this stream. """

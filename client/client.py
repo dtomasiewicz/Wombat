@@ -25,7 +25,9 @@ class CombatClient:
   
   def start(self, host, cport, nport):
     self.scontrol.connect((host, cport))
-    Thread(target=self.nstart, args=(host, nport)).start()
+    nt = Thread(target=self.nstart, args=(host, nport))
+    nt.daemon = True
+    nt.start()
   
   def nstart(self, host, port):
     self.snotify.connect((host, port))

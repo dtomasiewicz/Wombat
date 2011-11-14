@@ -20,21 +20,18 @@ class CombatServer:
     self.clients = {}
     
     # map of anonymous notify streams by their claim key
-    self.anstreams = {}
-    
-    # list of connections to be closed after select() completes
-    self.closebuffer = []
+    self._anstreams = {}
     
     # listener sockets for incoming control and notify connections
-    self.clistens = socket(AF_INET, SOCK_STREAM)
-    self.nlistens = socket(AF_INET, SOCK_STREAM)
+    self._clistens = socket(AF_INET, SOCK_STREAM)
+    self._nlistens = socket(AF_INET, SOCK_STREAM)
   
   def debug(self, message):
     print(message)
   
   def start(self, host, cport, nport):
-    Thread(target=self.clisten, args=(host, cport)).start()
-    Thread(target=self.nlisten, args=(host, nport)).start()
+    Thread(target=self._clisten, args=(host, cport)).start()
+    Thread(target=self._nlisten, args=(host, nport)).start()
     
     # process client actions
     while 1:
@@ -42,40 +39,37 @@ class CombatServer:
         # must pass 0 as timeout so new clients will always be checked
         for sock in select(self.clients.keys(), [], [], 0)[0]:
           Thread(target=self.clients[sock].act).start()
-      
-      # potential source of action processing lag
-      while len(self.closebuffer):
-        self.closebuffer[0].close()
   
   def claimnotify(self, key):
     """ Claims an anonymous notify socket, returning and dereferencing it. """
-    notify = self.anstreams.get(key, None)
+    notify = self._anstreams.get(key, None)
     if notify:
-      del self.anstreams[key]
+      del self._anstreams[key]
       return notify
     else:
       return None
   
-  def clisten(self, host, port):
+  def _clisten(self, host, port):
     """ Listens for incoming control connections. """
-    self.clistens.bind((host, port))
-    self.clistens.listen(self.LISTEN_BACKLOG)
+    self._clistens.bind((host, port))
+    self._clistens.listen(self.LISTEN_BACKLOG)
     while 1:
-      sock, addr = self.clistens.accept()
+      sock, addr = self._clistens.accept()
       self.connect(sock, addr)
   
-  def nlisten(self, host, port):
+  def _nlisten(self, host, port):
     """
     Listens for incoming notify connections and adds them to the list of 
-    anonymous notify streams, to later be claimed by a client.
+    anonymous notify streams, to later be claimed by a client. Sends the claim
+    key to the client for this purpose.
     """
-    self.nlistens.bind((host, port))
-    self.nlistens.listen(self.LISTEN_BACKLOG)
+    self._nlistens.bind((host, port))
+    self._nlistens.listen(self.LISTEN_BACKLOG)
     while 1:
-      sock, addr = self.nlistens.accept()
+      sock, addr = self._nlistens.accept()
       key = randrange(65535) # this will need to be more secure in the future
-      self.anstreams[key] = Stream(sock, send=NOTIFY_MAPPING)
-      self.anstreams[key].send(NotifyKey(key))
+      self._anstreams[key] = Stream(sock, send=NOTIFY_MAPPING)
+      self._anstreams[key].send(NotifyKey(key))
   
   def connect(self, control, addr):
     """ Connects a client, given its control socket and address. """
@@ -84,13 +78,14 @@ class CombatServer:
     self.clients[control].debug("Connected")
   
   def disconnect(self, control):
-    """ Disconnects a client, given its control socket. """
+    """
+    Disconnects a client, given its control socket.
+    TODO: Make this actually close the control and notify connections... be
+          careful with locking.
+    """
     client = self.clients.get(control, None)
     if client:
       del self.clients[control] # delete first so no more actions
-      self.closebuffer.append(control.close()) # in case used in select()
-      if client.notify:
-        client.notify.socket.close()
       client.debug("Disconnected")
   
   def clientbychar(self, char):

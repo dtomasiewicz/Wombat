@@ -18,7 +18,7 @@ class ClientShell(Cmd):
   def precmd(self, line):
     if len(self.client.debugs):
       print("=== NEW NOTIFICATIONS SINCE PREVIOUS COMMAND ===")
-      self.dumpdebug(" ")
+      self.dumpdebug()
       print("================================================")
     
     return line
@@ -30,9 +30,9 @@ class ClientShell(Cmd):
   def emptyline(self):
     pass
     
-  def dumpdebug(self, prefix = ""):
+  def dumpdebug(self):
     while len(self.client.debugs):
-      print(prefix+self.client.debugs.pop(0))
+      print(self.client.debugs.pop(0))
   
   def do_login(self, line):
     parser = ArgumentParser(description="Login to the combat server.")
