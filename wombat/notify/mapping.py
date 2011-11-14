@@ -1,5 +1,6 @@
 from .notification import *
 
 NOTIFY_MAPPING = {
-  1: Test
+  1: NotifyKey,
+  2: Test
 }

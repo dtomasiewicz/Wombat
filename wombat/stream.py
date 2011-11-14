@@ -1,33 +1,18 @@
-from socket import socket, AF_INET, SOCK_STREAM
 from struct import pack, unpack
 
+# wraps a connected socket for communication with the given send/recv protocols
 class Stream:
   
-  def __init__(self, sock=None, addr=None, send=None, recv=None):
-    self.socket = sock or socket(AF_INET, SOCK_STREAM)
-    self.address = addr
+  def __init__(self, socket, send={}, recv={}):
+    self.socket = socket
     self.setmapping(send, recv)
-  
-  def connect(self, host, port):
-    return self.socket.connect((host, port))
-    
-  def listen(self, host, port, handler, backlog=5):
-    self.socket = socket(AF_INET, SOCK_STREAM)
-    self.socket.bind((host, port))
-    self.socket.listen(backlog)
-    while True:
-      sock, addr = self.socket.accept()
-      handler(Stream(sock=sock, addr=addr))
   
   def setmapping(self, send=None, recv=None):
     if send != None:
       # send map is inverted for class->opcode translation
-      self.send_mapping = dict((c,o) for o,c in send.items())
+      self.sendmap = dict((c,o) for o,c in send.items())
     if recv != None:
-      self.recv_mapping = recv
-  
-  def close(self):
-    return self.socket.close()
+      self.recvmap = recv
   
   def send(self, message):
     if message.SIMPLE:
@@ -35,13 +20,13 @@ class Stream:
       data = []
     else:
       fmt, *data = message.pack()
-    packed = pack('!H'+fmt, self.send_mapping[message.__class__], *data)
+    packed = pack('!H'+fmt, self.sendmap[message.__class__], *data)
     return self.socket.send(packed)
   
   def recv(self):
     op = self.recvshort()
     if op:
-      opclass = self.recv_mapping.get(op, None)
+      opclass = self.recvmap.get(op, None)
       if opclass:
         return opclass() if opclass.SIMPLE else opclass.unpack(self)
       else:

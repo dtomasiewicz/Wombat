@@ -3,36 +3,35 @@ from argparse import ArgumentParser
 from client import CombatClient
 
 class ClientShell(Cmd):
-  prompt = "Command >>> "
+  prompt = ">>> "
   
-  def __init__(self):
+  def __init__(self, client):
     super().__init__()
-    self.client = CombatClient()
-    
-  def do_start(self, line):
-    parser = ArgumentParser(description="Connect to the combat server.")
-    parser.add_argument('-r', default='127.0.0.1')
-    parser.add_argument('-c', type=int, default=10000)
-    parser.add_argument('-n', type=int, default=10001)
-    args = parser.parse_args(line.split())
-    self.client.start(args.r, args.c, args.n)
+    self.client = client
   
   def do_login(self, line):
     parser = ArgumentParser(description="Login to the combat server.")
     parser.add_argument('user')
     parser.add_argument('password')
-    args = parser.parse_args(line.split())
-    self.client.login(args.user, args.password)
+    try:
+      args = parser.parse_args(line.split())
+      self.client.login(args.user, args.password)
+    except SystemExit:
+      pass
   
   def do_EOF(self, line):
     print("")
-    return True
+    if self.client.quit():
+      return True
   
   def do_charselect(self, line):
     parser = ArgumentParser(description="Choose your character!")
     parser.add_argument('character')
-    args = parser.parse_args(line.split())
-    self.client.charselect(args.character)
+    try:
+      args = parser.parse_args(line.split())
+      self.client.charselect(args.character)
+    except SystemExit:
+      pass
   
   def do_charquit(self, line):
     self.client.charquit()
@@ -41,13 +40,15 @@ class ClientShell(Cmd):
     self.client.logout()
   
   def do_quit(self, line):
-    self.client.quit()
+    if self.client.quit():
+      return True
   
   def precmd(self, line):
-    if len(self.client.debug):
+    if len(self.client.debugs):
       print("=== NEW NOTIFICATIONS SINCE PREVIOUS COMMAND ===")
       self.dumpdebug(" ")
       print("================================================")
+    
     return line
   
   def postcmd(self, stop, line):
@@ -55,8 +56,8 @@ class ClientShell(Cmd):
     return stop
     
   def dumpdebug(self, prefix = ""):
-    while len(self.client.debug):
-      print(prefix+self.client.debug.pop(0))
+    while len(self.client.debugs):
+      print(prefix+self.client.debugs.pop(0))
   
   
   def emptyline(self):

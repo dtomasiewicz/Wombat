@@ -4,22 +4,19 @@ from ..message import Message
 class Action(Message):
   pass
 
-class GetIdentity(Action):
-  pass
-
 # Type(bytelen)  Data
-# short          client ID
-class Identify(Action):
+# short          notify key
+class ClaimNotify(Action):
   SIMPLE = False
   
-  def __init__(self, clientid):
-    self.clientid = clientid
+  def __init__(self, key):
+    self.key = key
   
   def pack(self):
-    return ('H', self.clientid)
+    return ('H', self.key)
   
   def unpack(stream):
-    return Identify(stream.recvshort())
+    return ClaimNotify(stream.recvshort())
 
 # Type(bytelen)  Data
 # short          user name byte-length (u)

@@ -3,84 +3,95 @@
 # Client program to communicate with combat server
 
 from threading import Thread
+from socket import socket, AF_INET, SOCK_STREAM
 from wombat.stream import Stream
 from wombat.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
 from wombat.control.action import *
 from wombat.control.response import *
 from wombat.notify.mapping import NOTIFY_MAPPING
+from wombat.notify.notification import NotifyKey
 
 class CombatClient:
   def __init__(self):
-    self.control = Stream(send=ACTION_MAPPING, recv=RESPONSE_MAPPING)
-    self.notify = Stream()
-    self.identity = None
-    self.debug = []
+    self.scontrol = socket(AF_INET, SOCK_STREAM)
+    self.snotify = socket(AF_INET, SOCK_STREAM)
+    self.control = Stream(self.scontrol, send=ACTION_MAPPING,
+                          recv=RESPONSE_MAPPING)
+    self.notify = Stream(self.snotify, recv=NOTIFY_MAPPING)
+    self.debugs = []
   
-  def start(self, host, port, nport):
-    self.control.connect(host, port)
-    res = self.control.sendrecv(GetIdentity())
-    if res.istype(Identity):
-      self.identity = res.identity
-      Thread(target=self.nstart, args=(host, nport)).start()
-      self.debug.append("Received client identity: {0}".format(self.identity))
-    else:
-      self.debug.append("Failed to retrieve identity from server.")
+  def debug(self, msg):
+    self.debugs.append(msg)
+  
+  def start(self, host, cport, nport):
+    self.scontrol.connect((host, cport))
+    Thread(target=self.nstart, args=(host, nport)).start()
   
   def nstart(self, host, port):
-    self.notify.setmapping(send=ACTION_MAPPING, recv=RESPONSE_MAPPING)
-    self.notify.connect(host, port)
-    self.notify.send(Identify(self.identity))
-    res = self.notify.recv()
-    if res.istype(RemapNotify):
-      self.debug.append("Notify connection opened.")
-      self.notify.setmapping(recv=NOTIFY_MAPPING, send={})
-      
-      while 1:
-        res = self.notify.recv()
-        if res:
-          self.nhandle(res)
-        else:
-          break
+    self.snotify.connect((host, port))
+    key = self.notify.recv()
+    if key.istype(NotifyKey):
+      res = self.control.sendrecv(ClaimNotify(key.key))
+      if res.SUCCESS:
+        while 1:
+          res = self.notify.recv()
+          if res:
+            self.nhandle(res)
+          else:
+            break
+      else:
+        self.debug("Failed to claim notify connection.")
     else:
-      self.debug.append("Failed to open notify connection.")
+      self.debug("Failed to receive ClaimKey on notify connection.")
   
   def nhandle(self, n):
     ### todo
-    self.debug.append("Received notification: {0}".format(n.__class__))
+    self.debug("Received notification: {0}".format(n.__class__))
   
   def login(self, user, password):
     if self.control.sendrecv(Login(user, password)).SUCCESS:
-      self.debug.append("Login success: {0}".format(user))
+      self.debug("Login success: {0}".format(user))
     else:
-      self.debug.append("Login failure: {0}".format(user))
+      self.debug("Login failure: {0}".format(user))
   
   def charselect(self, char):
     if self.control.sendrecv(CharSelect(char)).SUCCESS:
-      self.debug.append("Character selected: {0}".format(char))
+      self.debug("Character selected: {0}".format(char))
     else:
-      self.debug.append("Failed to select character: {0}.".format(char))
+      self.debug("Failed to select character: {0}.".format(char))
   
   def charquit(self):
     if self.control.sendrecv(CharQuit()).SUCCESS:
-      self.debug.append("Character quit success.")
+      self.debug("Character quit success.")
     else:
-      self.debug.append("Character quit failure.")
+      self.debug("Character quit failure.")
   
   def logout(self):
     if self.control.sendrecv(Logout()).SUCCESS:
-      self.debug.append("Logout success.")
+      self.debug("Logout success.")
     else:
-      self.debug.append("Logout failure.")
+      self.debug("Logout failure.")
     
   def quit(self):
     if self.control.sendrecv(Quit()).SUCCESS:
-      self.control.close()
-      self.notify.close()
-      self.debug.append("Quit success.")
+      self.control.socket.close()
+      self.notify.socket.close()
+      self.debug("Quit success.")
+      return True
     else:
-      self.debug.append("Quit failure.")
+      self.debug("Quit failure.")
+      return False
   
 
 if __name__ == '__main__':
+  from argparse import ArgumentParser
+  parser = ArgumentParser(description="Interactive combat client shell.")
+  parser.add_argument('-r', default='127.0.0.1')
+  parser.add_argument('-c', type=int, default=10000)
+  parser.add_argument('-n', type=int, default=10001)
+  args = parser.parse_args()
+  client = CombatClient()
+  client.start(args.r, args.c, args.n)
+  
   from cli import ClientShell
-  ClientShell().cmdloop()
+  ClientShell(client).cmdloop()

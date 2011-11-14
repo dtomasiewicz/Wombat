@@ -10,22 +10,5 @@ class Success(Response):
 class InvalidAction(Response):
   pass
 
-# Type(bytelen)  Data
-# short          client ID
-class Identity(Success):
-  SIMPLE = False
-  
-  def __init__(self, identity):
-    self.identity = identity
-  
-  def pack(self):
-    return ('H', self.identity)
-  
-  def unpack(stream):
-    return Identity(stream.recvshort())
-
-class InvalidIdentity(Response):
-  pass
-
-class RemapNotify(Success):
+class InvalidNotifyKey(Response):
   pass
