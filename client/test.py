@@ -11,3 +11,6 @@ c.login('John', 'Hancock')
 c.quit()
 c.logout()
 c.quit()
+
+for s in c.debugs:
+  print(s)

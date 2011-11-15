@@ -19,6 +19,8 @@ class CombatServer:
     # map of clients by their control sockets
     self.clients = {}
     
+    self.idle = set()
+    
     # map of anonymous notify streams by their claim key
     self._anstreams = {}
     
@@ -37,15 +39,27 @@ class CombatServer:
     while 1:
       if len(self.clients):
         # must pass 0 as timeout so new clients will always be checked
-        for sock in select(self.clients.keys(), [], [], 0)[0]:
+        for sock in select(self.idle, [], [], 0)[0]:
+          self.idle.remove(sock) # so clients with data won't be selected again
           Thread(target=self.clients[sock].act).start()
   
   def claimnotify(self, key):
-    """ Claims an anonymous notify socket, returning and dereferencing it. """
+    """
+    Claims an anonymous notify socket, returning and dereferencing it.
+    Since notify sockets become a shared resource once they are placed in 
+    _anstreams, we must ensure we have the stream's lock AND it is still in
+    _anstreams before handing it to the client.
+    """
     notify = self._anstreams.get(key, None)
     if notify:
-      del self._anstreams[key]
-      return notify
+      with notify.lock:
+        # must get it again, in case it was claimed before we acquired the lock
+        notify = self._anstreams.get(key, None)
+        if notify:
+          del self._anstreams[key]
+          return notify
+        else:
+          return None
     else:
       return None
   
@@ -76,6 +90,7 @@ class CombatServer:
     self.clients[control] = Client(self, Stream(control, recv=ACTION_MAPPING, 
                                                 send=RESPONSE_MAPPING), addr)
     self.clients[control].debug("Connected")
+    self.idle.add(control)
   
   def disconnect(self, control):
     """

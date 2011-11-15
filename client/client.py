@@ -33,7 +33,8 @@ class CombatClient:
     self.snotify.connect((host, port))
     key = self.notify.recv()
     if isinstance(key, NotifyKey):
-      res = self.control.sendrecv(ClaimNotify(key.key))
+      with self.control.lock:
+        res = self.control.sendrecv(ClaimNotify(key.key))
       if res.SUCCESS:
         while 1:
           res = self.notify.recv()
@@ -53,47 +54,51 @@ class CombatClient:
       self.debug("Received notification: {0}".format(n.__class__))
   
   def login(self, user, password):
-    if self.control.sendrecv(Login(user, password)).SUCCESS:
-      self.debug("Login success: {0}".format(user))
-    else:
-      self.debug("Login failure: {0}".format(user))
+    with self.control.lock:
+      if self.control.sendrecv(Login(user, password)).SUCCESS:
+        self.debug("Login success: {0}".format(user))
+      else:
+        self.debug("Login failure: {0}".format(user))
   
   def charselect(self, char):
-    if self.control.sendrecv(CharSelect(char)).SUCCESS:
-      self.debug("Character selected: {0}".format(char))
-    else:
-      self.debug("Failed to select character: {0}.".format(char))
+    with self.control.lock:
+      if self.control.sendrecv(CharSelect(char)).SUCCESS:
+        self.debug("Character selected: {0}".format(char))
+      else:
+        self.debug("Failed to select character: {0}.".format(char))
   
   def charquit(self):
-    if self.control.sendrecv(CharQuit()).SUCCESS:
-      self.debug("Character quit success.")
-    else:
-      self.debug("Character quit failure.")
+    with self.control.lock:
+      if self.control.sendrecv(CharQuit()).SUCCESS:
+        self.debug("Character quit success.")
+      else:
+        self.debug("Character quit failure.")
   
   def logout(self):
-    if self.control.sendrecv(Logout()).SUCCESS:
-      self.debug("Logout success.")
-    else:
-      self.debug("Logout failure.")
+    with self.control.lock:
+      if self.control.sendrecv(Logout()).SUCCESS:
+        self.debug("Logout success.")
+      else:
+        self.debug("Logout failure.")
     
   def quit(self):
-    if self.control.sendrecv(Quit()).SUCCESS:
-      self.control.socket.close()
-      self.notify.socket.close()
-      self.debug("Quit success.")
-      return True
-    else:
-      self.debug("Quit failure.")
-      return False
+    with self.control.lock:
+      if self.control.sendrecv(Quit()).SUCCESS:
+        self.debug("Quit success.")
+        return True
+      else:
+        self.debug("Quit failure.")
+        return False
   
   def sendmessage(self, char, message):
-    res = self.control.sendrecv(SendMessage(char, message))
-    if res.SUCCESS:
-      self.debug("Message sent.")
-    elif isinstance(res, CharNoExists):
-      self.debug("Character does not exist: {0}".format(res.char))
-    else:
-      self.debug("Failed to send message.")
+    with self.control.lock:
+      res = self.control.sendrecv(SendMessage(char, message))
+      if res.SUCCESS:
+        self.debug("Message sent.")
+      elif isinstance(res, CharNoExists):
+        self.debug("Character does not exist: {0}".format(res.char))
+      else:
+        self.debug("Failed to send message.")
 
 if __name__ == '__main__':
   from argparse import ArgumentParser
