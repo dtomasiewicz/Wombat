@@ -7,3 +7,7 @@ class Message:
   # if simple is False in subclass, subclass must define its own pack and
   # unpack(static) methods
   SIMPLE = True
+
+class CodeError(Exception):
+  def __init__(self, code):
+    self.code = code

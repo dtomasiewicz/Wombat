@@ -1,5 +1,5 @@
-from .action import *
-from .response import *
+from wombat.control.action import *
+from wombat.control.response import *
 
 ACTION_MAPPING = {
   1: ClaimNotify,

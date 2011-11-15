@@ -1,9 +1,19 @@
+from socket import error as socketerror
+from struct import error as structerror
+from select import select
+from errno import errorcode
+
+from wombat.message import CodeError
 from wombat.control.action import *
 from wombat.control.response import *
 from wombat.notify.notification import *
 
 class Client:
-  """ Handles all actions that a client machine can perform. """
+  """
+  Handles all actions that a client machine can perform. For thread safety,
+  should never be mutated except through the act() method and methods that are
+  called by act().
+  """
   
   def __init__(self, server, control, address):
     self.server = server
@@ -15,7 +25,7 @@ class Client:
     self._state = self._sinitial
   
   def sendnotify(self, msg):
-    """ Sends the the given Notification message to the client. """
+    """ Sends the the given Notification message to this client. """
     if self._notify:
       with self._notify.lock:
         self._notify.send(msg)
@@ -31,27 +41,49 @@ class Client:
     self.server.debug("{0}: {1}".format(self.identity(), msg))
     
   def act(self):
-    """ Handles an Action message received from the client. """
-    action = self._control.recv()
-    if not action:
-      self.server.disconnect(self._control.socket)
-    elif isinstance(action, ClaimNotify):
-      self._notify = self.server.claimnotify(action.key)
-      if self._notify:
-        self._control.send(Success())
+    """
+    Handles an Action message received from the client. If the socket has more
+    data after the first message is read, it will immediately read the next,
+    continuing until there are no more.
+    """
+    dc = False
+    while not dc:
+      try:
+        action = self._control.recv()
+      except CodeError as e:
+        self.debug("Received invalid message code: {0}".format(e.code))
+        dc = True
+      except socketerror as e:
+        self.debug("{0} occurred during message reception", errorcode[e.errno])
+        dc = True
+      except structerror as e:
+        self.debug("Failed to unpack message data")
+        dc = True
+      
+      if isinstance(action, ClaimNotify):
+        self._notify = self.server.claimnotify(action.key)
+        if self._notify:
+          self._control.send(Success())
+        else:
+          self._control.send(InvalidNotifyKey())
       else:
-        self._control.send(InvalidNotifyKey())
-      self.server.idle.add(self._control.socket)
-    elif self._state(action) == True:
+        dc = self._state(action)
+        
+      # only continue processing if more data on socket
+      if len(select([self._control.socket], [], [])[0]) == 0:
+        break
+    
+    if dc:
       self.server.disconnect(self._control.socket)
     else:
       self.server.idle.add(self._control.socket)
   
   def _sinitial(self, action):
     """
-    Client state after opening the client application.
+    Client state after opening the client application or after logging out.
     Valid actions: Login, Quit
     """
+    
     if isinstance(action, Login):
       self.user = action.user
       self.debug("Logged in as {0}".format(self.user))
@@ -68,9 +100,10 @@ class Client:
   
   def _sloggedin(self, action):
     """
-    Client state after logging in.
+    Client state after logging in or deselecting a character.
     Valid actions: Logout, CharSelect
     """
+    
     if isinstance(action, Logout):
       self.debug("Logged out")
       self.user = None
@@ -91,6 +124,7 @@ class Client:
     Client state after selecting a character.
     Valid actions: CharQuit, SendMessage
     """
+    
     if isinstance(action, CharQuit):
       self.debug("Deselected {0}".format(self.char))
       self.char = None

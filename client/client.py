@@ -1,9 +1,8 @@
 #!/usr/bin/env python
-#
-# Client program to communicate with combat server
 
 from threading import Thread
 from socket import socket, AF_INET, SOCK_STREAM
+
 from wombat.stream import Stream
 from wombat.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
 from wombat.control.action import *

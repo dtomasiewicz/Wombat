@@ -1,47 +1,62 @@
 #!/usr/bin/env python
-#
-# Runs a combat server
 
+from threading import Thread
+from select import select
+from socket import socket, AF_INET, SOCK_STREAM
 from random import randrange
+from time import sleep
+
 from wombat.stream import Stream
 from wombat.notify.mapping import NOTIFY_MAPPING
 from wombat.notify.notification import NotifyKey
 from wombat.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
-from client import Client
-from threading import Thread
-from select import select
-from socket import socket, AF_INET, SOCK_STREAM
+
+from combatserver.client import Client
 
 class CombatServer:
   LISTEN_BACKLOG = 5
+  SELECT_TIMEOUT = .1
   
   def __init__(self):
-    # map of clients by their control sockets
-    self.clients = {}
-    
-    self.idle = set()
-    
-    # map of anonymous notify streams by their claim key
-    self._anstreams = {}
-    
     # listener sockets for incoming control and notify connections
-    self._clistens = socket(AF_INET, SOCK_STREAM)
-    self._nlistens = socket(AF_INET, SOCK_STREAM)
+    self._clisten = socket(AF_INET, SOCK_STREAM)
+    self._nlisten = socket(AF_INET, SOCK_STREAM)
   
   def debug(self, message):
     print(message)
   
   def start(self, host, cport, nport):
-    Thread(target=self._clisten, args=(host, cport)).start()
-    Thread(target=self._nlisten, args=(host, nport)).start()
+    # map of clients by their control sockets
+    self.clients = {}
     
-    # process client actions
+    # map of anonymous notify streams by their claim key
+    self._anstreams = {}
+    
+    # listens for incoming control connections
+    self._clisten.bind((host, cport))
+    self._clisten.setblocking(0)
+    self._clisten.listen(self.LISTEN_BACKLOG)
+    
+    # listens for incoming notify connections
+    self._nlisten.bind((host, nport))
+    self._nlisten.setblocking(0)
+    self._nlisten.listen(self.LISTEN_BACKLOG)
+    
+    # set of idle connections to be select()ed from
+    self.idle = set((self._clisten, self._nlisten))
+    
     while 1:
-      if len(self.clients):
-        # must pass 0 as timeout so new clients will always be checked
-        for sock in select(self.idle, [], [], 0)[0]:
-          self.idle.remove(sock) # so clients with data won't be selected again
-          Thread(target=self.clients[sock].act).start()
+      if len(self.idle):
+        for sock in select(self.idle, [], [], self.SELECT_TIMEOUT)[0]:
+          self.idle.remove(sock)
+          if sock == self._clisten:
+            Thread(target=self._caccept).start()
+          elif sock == self._nlisten:
+            Thread(target=self._naccept).start()
+          else:
+            Thread(target=self.clients[sock].act).start()
+      elif self.SELECT_TIMEOUT > 0:
+        sleep(self.SELECT_TIMEOUT)
   
   def claimnotify(self, key):
     """
@@ -63,34 +78,30 @@ class CombatServer:
     else:
       return None
   
-  def _clisten(self, host, port):
-    """ Listens for incoming control connections. """
-    self._clistens.bind((host, port))
-    self._clistens.listen(self.LISTEN_BACKLOG)
-    while 1:
-      sock, addr = self._clistens.accept()
-      self.connect(sock, addr)
+  def _caccept(self):
+    """ Connects a new client. """
+    sock, addr = self._clisten.accept()
+    self.idle.add(self._clisten)
+    
+    sock.setblocking(0)
+    self.clients[sock] = Client(self, Stream(sock, recv=ACTION_MAPPING, 
+                                             send=RESPONSE_MAPPING), addr)
+    self.clients[sock].debug("Connected")
+    self.idle.add(sock)
   
-  def _nlisten(self, host, port):
+  def _naccept(self):
     """
-    Listens for incoming notify connections and adds them to the list of 
-    anonymous notify streams, to later be claimed by a client. Sends the claim
-    key to the client for this purpose.
+    Accepts an incoming notify connection and adds it to the list of anonymous 
+    notify streams, to later be claimed by a client. Sends the claim key to the
+    client for this purpose.
     """
-    self._nlistens.bind((host, port))
-    self._nlistens.listen(self.LISTEN_BACKLOG)
-    while 1:
-      sock, addr = self._nlistens.accept()
-      key = randrange(65535) # this will need to be more secure in the future
-      self._anstreams[key] = Stream(sock, send=NOTIFY_MAPPING)
-      self._anstreams[key].send(NotifyKey(key))
-  
-  def connect(self, control, addr):
-    """ Connects a client, given its control socket and address. """
-    self.clients[control] = Client(self, Stream(control, recv=ACTION_MAPPING, 
-                                                send=RESPONSE_MAPPING), addr)
-    self.clients[control].debug("Connected")
-    self.idle.add(control)
+    sock, addr = self._nlisten.accept()
+    self.idle.add(self._nlisten)
+    
+    sock.setblocking(0)
+    key = randrange(65535) # this will need to be more secure in the future
+    self._anstreams[key] = Stream(sock, send=NOTIFY_MAPPING)
+    self._anstreams[key].send(NotifyKey(key))
   
   def disconnect(self, control):
     """

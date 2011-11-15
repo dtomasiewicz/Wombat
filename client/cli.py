@@ -1,7 +1,8 @@
 from cmd import Cmd
 from argparse import ArgumentParser
-from client import CombatClient
 from shlex import split
+
+from combatclient.client import CombatClient
 
 class ClientShell(Cmd):
   prompt = ">>> "

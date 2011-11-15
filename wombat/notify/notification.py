@@ -1,4 +1,4 @@
-from ..message import Message
+from wombat.message import Message
 
 class Notification(Message):
   pass

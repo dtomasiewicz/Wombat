@@ -1,4 +1,4 @@
-from ..message import Message
+from wombat.message import Message
 
 # generic control action (sends a UTF-8 string)
 class Response(Message):

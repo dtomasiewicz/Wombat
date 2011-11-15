@@ -1,5 +1,8 @@
 from struct import pack, unpack
 from threading import Lock
+from socket import error
+
+from wombat.message import CodeError
 
 class Stream:
   """
@@ -38,14 +41,11 @@ class Stream:
     receive mapping.
     """
     op = self.recvshort()
-    if op:
-      opclass = self.recvmap.get(op, None)
-      if opclass:
-        return opclass() if opclass.SIMPLE else opclass.unpack(self)
-      else:
-        raise Exception("Invalid op code: {0}".format(op))
+    opclass = self.recvmap.get(op, None)
+    if opclass:
+      return opclass() if opclass.SIMPLE else opclass.unpack(self)
     else:
-      return None
+      raise CodeError(op)
   
   def sendrecv(self, message):
     """
@@ -62,30 +62,19 @@ class Stream:
     return self.socket.send(pack('!{0}s'.format(blen), byts))
   
   def recvbytes(self, length):
-    rcv = self.socket.recv(length)
-    if len(rcv) == length:
-      return unpack('!{0}s'.format(length), rcv)
-    else:
-      return None
+    return unpack('!{0}s'.format(length), self.socket.recv(length))
   
   def sendshort(self, short):
     return self.socket.send(pack('!H', short))
   
   def recvshort(self):
-    rcv = self.socket.recv(2)
-    if len(rcv) == 2:
-      return unpack('!H', rcv)[0]
-    else:
-      return None
+    return unpack('!H', self.socket.recv(2))[0]
       
   def sendstring(self, string, encoding):
     byts = bytes(string, encoding)
     return self.socket.send(pack('!{0}s'.format(len(byts)), byts))
   
   def recvstring(self, bytelen, encoding):
-    rcv = self.socket.recv(bytelen)
-    if len(rcv) == bytelen:
-      return unpack('!{0}s'.format(bytelen), rcv)[0].decode(encoding)
-    else:
-      return None
+    return unpack('!{0}s'.format(bytelen),
+                  self.socket.recv(bytelen))[0].decode(encoding)
   
