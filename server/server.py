@@ -4,7 +4,7 @@ from threading import Thread
 from select import select
 from socket import socket, AF_INET, SOCK_STREAM
 from random import randrange
-from time import sleep
+from time import time, sleep
 
 from wombat.stream import Stream
 from wombat.notify.mapping import NOTIFY_MAPPING
@@ -15,7 +15,7 @@ from combatserver.client import Client
 
 class CombatServer:
   LISTEN_BACKLOG = 5
-  SELECT_TIMEOUT = .1
+  SELECT_TIMEOUT = .001
   
   def __init__(self):
     # listener sockets for incoming control and notify connections
@@ -24,6 +24,7 @@ class CombatServer:
   
   def debug(self, message):
     print(message)
+    #pass
   
   def start(self, host, cport, nport):
     # map of clients by their control sockets
@@ -45,6 +46,11 @@ class CombatServer:
     # set of idle connections to be select()ed from
     self.idle = set((self._clisten, self._nlisten))
     
+    # cleanup daemon for unclaimed notify threads
+    cleanup = Thread(target=self.cleanup)
+    cleanup.daemon = True
+    cleanup.start()
+    
     while 1:
       if len(self.idle):
         for sock in select(self.idle, [], [], self.SELECT_TIMEOUT)[0]:
@@ -57,6 +63,15 @@ class CombatServer:
             Thread(target=self.clients[sock].act).start()
       elif self.SELECT_TIMEOUT > 0:
         sleep(self.SELECT_TIMEOUT)
+  
+  def cleanup(self):
+    while 1:
+      for key, notify in tuple(self._anstreams.items()):
+        with notify.lock:
+          if self._anstreams.get(key, None) and time() > notify.created + 5:
+            notify.socket.close()
+            del self._anstreams[key]
+      sleep(5)
   
   def claimnotify(self, key):
     """
@@ -72,9 +87,7 @@ class CombatServer:
         notify = self._anstreams.get(key, None)
         if notify:
           del self._anstreams[key]
-          return notify
-        else:
-          return None
+        return notify
     else:
       return None
   
@@ -125,4 +138,8 @@ class CombatServer:
     return None
 
 if __name__ == "__main__":
-  CombatServer().start("127.0.0.1", 10000, 10001)
+  server = CombatServer()
+  try:
+    server.start("127.0.0.1", 10000, 10001)
+  except KeyboardInterrupt:
+    pass

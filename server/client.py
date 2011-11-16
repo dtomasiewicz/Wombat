@@ -28,13 +28,14 @@ class Client:
     """ Sends the the given Notification message to this client. """
     if self._notify:
       with self._notify.lock:
-        self._notify.send(msg)
+        if self._notify: # make sure it hasn't been closed
+          self._notify.send(msg)
     else:
       self.debug("Failed to be notified of {0}".format(msg.__class__))
   
   def identity(self):
     """ Unique string identifying the client, composed of socket id and IP. """
-    return "{0}@{1}".format(id(self._control.socket), self.address[0])
+    return "{0}@{1}".format(id(self), self.address[0])
   
   def debug(self, msg):
     """ Sends client-relevant debugging info to the server. """
@@ -53,12 +54,15 @@ class Client:
       except CodeError as e:
         self.debug("Received invalid message code: {0}".format(e.code))
         dc = True
+        break
       except socketerror as e:
-        self.debug("{0} occurred during message reception", errorcode[e.errno])
+        self.debug("{0} occurred during message reception".format(errorcode[e.errno]))
         dc = True
+        break
       except structerror as e:
         self.debug("Failed to unpack message data")
         dc = True
+        break
       
       if isinstance(action, ClaimNotify):
         self._notify = self.server.claimnotify(action.key)
@@ -70,11 +74,17 @@ class Client:
         dc = self._state(action)
         
       # only continue processing if more data on socket
-      if len(select([self._control.socket], [], [])[0]) == 0:
+      if len(select([self._control.socket], [], [], 0)[0]) == 0:
         break
     
     if dc:
       self.server.disconnect(self._control.socket)
+      self._control.socket.close()
+      self._control = None
+      if self._notify:
+        with self._notify.lock:
+          self._notify.socket.close()
+          self._notify = None
     else:
       self.server.idle.add(self._control.socket)
   

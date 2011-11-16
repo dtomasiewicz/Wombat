@@ -1,3 +1,4 @@
+from time import time
 from struct import pack, unpack
 from threading import Lock
 from socket import error
@@ -13,6 +14,7 @@ class Stream:
     self.socket = socket
     self.setmapping(send, recv)
     self.lock = Lock()
+    self.created = time()
   
   def setmapping(self, send=None, recv=None):
     """ Sets the mapping (send and receive protocols) for this stream. """
