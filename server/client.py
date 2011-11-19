@@ -11,19 +11,21 @@ class Client(Lockable):
     must be acquired before mutation, invocation, and dependent accesses
   """
   
-  def __init__(self, server, control, address):
+  def __init__(self, server, control):
     super().__init__()
     self.server = server
     self.control = control
-    self.address = address
     self.notify = None
     self.user = None
     self.avatar = None
     self.state = self.s_start
   
+  def fileno(self):
+    return self.control.fileno()
+  
   def identity(self):
     """ Unique string identifying the client, composed of socket id and IP. """
-    return "{0}@{1}".format(id(self), self.address[0])
+    return "{0}@{1}".format(id(self), self.control.host)
   
   def debug(self, msg):
     """ Sends client-relevant debugging info to the server. """

@@ -22,17 +22,13 @@ class CombatServer:
     # listener sockets for incoming control and notify connections
     self._clisten = socket(AF_INET, SOCK_STREAM)
     self._nlisten = socket(AF_INET, SOCK_STREAM)
-    
-    # stream wrappers for control and notify connections
-    self._controlw = Stream(recv=ACTION_MAPPING, send=RESPONSE_MAPPING)
-    self._notifyw = Stream(send=NOTIFY_MAPPING)
   
   def debug(self, message):
     print(message)
   
   def start(self, host, cport, nport):
-    # map of clientinfo tuples by their control sockets
-    self._clients = {}
+    # map of clients by their control sockets
+    self._clients = set()
     
     # map of anonymous notify streams by their claim key
     self._anotifys = {}
@@ -57,21 +53,23 @@ class CombatServer:
     
     while 1:
       if len(self._idle):
-        for sock in select(self._idle, [], [], self.SELECT_TIMEOUT)[0]:
-          self._idle.remove(sock)
-          if sock == self._clisten:
+        for ready in select(self._idle, [], [], self.SELECT_TIMEOUT)[0]:
+          self._idle.remove(ready)
+          if isinstance(ready, Client):
+            Thread(target=self._clientdata, args=[ready]).start()
+          elif ready == self._clisten:
             Thread(target=self._caccept).start()
-          elif sock == self._nlisten:
+          elif ready == self._nlisten:
             Thread(target=self._naccept).start()
           else:
-            Thread(target=self._clientdata, args=(self._clients[sock],)).start()
+            self.debug("Unrecognized select: {0}".format(ready))
       elif self.SELECT_TIMEOUT > 0:
         sleep(self.SELECT_TIMEOUT)
   
   def _clientdata(self, client):
     while client.state:
       try:
-        action = self._controlw.recv(client.control)
+        action = client.control.recv()
       except:
         """
         if isinstance(e, CodeError):
@@ -85,16 +83,16 @@ class CombatServer:
       else:
         with client:
           res = client.state(action)
-        self._controlw.send(client.control, res)
+        client.control.send(res)
         
         # only continue processing if more data on socket
-        if len(select([client.control], [], [], 0)[0]) == 0:
+        if len(select([client], [], [], 0)[0]) == 0:
           break
     
     if not client.state:
       self._disconnect(client)
     else:
-      self._idle.add(client.control)
+      self._idle.add(client)
   
   """
   def cleanup(self):
@@ -121,13 +119,17 @@ class CombatServer:
   
   def _caccept(self):
     """ Connects a new client. """
-    sock, addr = self._clisten.accept()
+    sock, (host, port) = self._clisten.accept()
     self._idle.add(self._clisten)
-    
     sock.setblocking(0)
-    self._clients[sock] = Client(self, sock, addr)
-    self._clients[sock].debug("Connected")
-    self._idle.add(sock)
+    
+    client = Client(self, Stream(
+        recv=ACTION_MAPPING, send=RESPONSE_MAPPING,
+        sock=sock, host=host, port=port))
+    
+    self._clients.add(client)
+    client.debug("Connected")
+    self._idle.add(client)
   
   def _naccept(self):
     """
@@ -135,17 +137,19 @@ class CombatServer:
     notify streams, to later be claimed by a client. Sends the claim key to the
     client for this purpose.
     """
-    sock, addr = self._nlisten.accept()
+    sock, (host, port) = self._nlisten.accept()
     self._idle.add(self._nlisten)
-    
     sock.setblocking(0)
+    
+    stream = Stream(send=NOTIFY_MAPPING, sock=sock, host=host, port=port)
+    
     key = randrange(65535) # this will need to be more secure in the future
-    self._anotifys[key] = sock
-    self._notifyw.send(sock, NotifyKey(key))
+    self._anotifys[key] = stream
+    stream.send(NotifyKey(key))
   
   def _disconnect(self, client):
     """ Disconnects a client. """
-    del self._clients[client.control]
+    self._clients.remove(client)
     with client:
       client.control.close()
       if client.notify:
@@ -161,10 +165,10 @@ class CombatServer:
     This will need to be rafactored later. Ideally, Client objects will be
     (indirectly?) mapped by their avatar names once they select an avatar.
     """
-    for c in self._clients.values():
+    for c in self._clients:
       with c:
         if c.avatar and c.avatar.name == to:
-          self._notifyw.send(c.notify, RecvMessage(from_, message))
+          c.notify.send(RecvMessage(from_, message))
           return True
     return False
   

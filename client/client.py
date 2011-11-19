@@ -12,14 +12,11 @@ from wombat.notify.notification import *
 
 class CombatClient:
   def __init__(self):
-    self.control = socket(AF_INET, SOCK_STREAM)
+    self.control = Stream(send=ACTION_MAPPING, recv=RESPONSE_MAPPING)
+    self.notify = Stream(recv=NOTIFY_MAPPING)
     self.lcontrol = Lock()
-    self.notify = socket(AF_INET, SOCK_STREAM)
-    self.wcontrol = Stream(send=ACTION_MAPPING, recv=RESPONSE_MAPPING)
-    self.wnotify = Stream(recv=NOTIFY_MAPPING)
     self.debugs = []
     self.nhook = self.ndebug
-    
     self.user = None
     self.avatar = None
   
@@ -27,20 +24,20 @@ class CombatClient:
     self.debugs.append(msg)
   
   def start(self, host, cport, nport):
-    self.control.connect((host, cport))
+    self.control.connect(host, cport)
     nt = Thread(target=self.nstart, args=(host, nport))
     nt.daemon = True
     nt.start()
   
   def nstart(self, host, port):
-    self.notify.connect((host, port))
-    key = self.wnotify.recv(self.notify)
+    self.notify.connect(host, port)
+    key = self.notify.recv()
     if isinstance(key, NotifyKey):
       with self.lcontrol:
-        res = self.wcontrol.sendrecv(self.control, ClaimNotify(key.key))
+        res = self.control.sendrecv(ClaimNotify(key.key))
       if res.SUCCESS:
         while 1:
-          self.nhook(self.wnotify.recv(self.notify))
+          self.nhook(self.notify.recv())
       else:
         self.debug("Failed to claim notify connection.")
     else:
@@ -54,7 +51,7 @@ class CombatClient:
   
   def login(self, user, password):
     with self.lcontrol:
-      res = self.wcontrol.sendrecv(self.control, Login(user, password))
+      res = self.control.sendrecv(Login(user, password))
       if res.SUCCESS:
         self.user = user
         self.debug("Login success: {0}".format(user))
@@ -64,7 +61,7 @@ class CombatClient:
   
   def avatarselect(self, avatar):
     with self.lcontrol:
-      res = self.wcontrol.sendrecv(self.control, AvatarSelect(avatar))
+      res = self.control.sendrecv(AvatarSelect(avatar))
       if res.SUCCESS:
         self.avatar = avatar
         self.debug("Avatar selected: {0}".format(avatar))
@@ -74,7 +71,7 @@ class CombatClient:
   
   def avatarquit(self):
     with self.lcontrol:
-      res = self.wcontrol.sendrecv(self.control, AvatarQuit())
+      res = self.control.sendrecv(AvatarQuit())
       if res.SUCCESS:
         self.avatar = None
         self.debug("Avatar quit success.")
@@ -84,7 +81,7 @@ class CombatClient:
   
   def logout(self):
     with self.lcontrol:
-      res = self.wcontrol.sendrecv(self.control, Logout())
+      res = self.control.sendrecv(Logout())
       if res.SUCCESS:
         self.user = None
         self.debug("Logout success.")
@@ -94,7 +91,7 @@ class CombatClient:
     
   def quit(self):
     with self.lcontrol:
-      res = self.wcontrol.sendrecv(self.control, Quit())
+      res = self.control.sendrecv(Quit())
       if res.SUCCESS:
         self.debug("Quit success.")
       else:
@@ -103,7 +100,7 @@ class CombatClient:
   
   def sendmessage(self, avatar, message):
     with self.lcontrol:
-      res = self.wcontrol.sendrecv(self.control, SendMessage(avatar, message))
+      res = self.control.sendrecv(SendMessage(avatar, message))
       if res.SUCCESS:
         self.debug("Message sent.")
       elif isinstance(res, AvatarNoExists):

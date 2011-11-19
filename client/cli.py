@@ -42,6 +42,9 @@ class ClientShell(Cmd):
     except SystemExit:
       pass
   
+  def do_li(self, line):
+    return self.do_login(line)
+  
   def do_avatarselect(self, line):
     parser = ArgumentParser(description="Choose your avatar!")
     parser.add_argument('avatar')
@@ -51,15 +54,30 @@ class ClientShell(Cmd):
     except SystemExit:
       pass
   
+  def do_as(self, line):
+    return self.do_avatarselect(line)
+  
   def do_avatarquit(self, line):
     self.client.avatarquit()
+  
+  def do_aq(self, line):
+    return self.do_avatarquit(line)
   
   def do_logout(self, line):
     self.client.logout()
   
+  def do_lo(self, line):
+    return self.do_logout(line)
+  
   def do_quit(self, line):
     if self.client.quit().SUCCESS:
       return True
+  
+  def do_q(self, line):
+    return self.do_quit(line)
+  
+  def do_exit(self, line):
+    return self.do_quit(line)
 
   def do_msg(self, line):
     parser = ArgumentParser(description="Send a message to another avatar.")
@@ -70,3 +88,6 @@ class ClientShell(Cmd):
       self.client.sendmessage(args.avatar, args.message)
     except SystemExit:
       pass
+  
+  def do_m(self, line):
+    return self.do_msg(line)
