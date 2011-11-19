@@ -6,8 +6,8 @@ ACTION_MAPPING = {
   2: Login,
   3: Logout,
   4: Quit,
-  5: CharSelect,
-  6: CharQuit,
+  5: AvatarSelect,
+  6: AvatarQuit,
   7: SendMessage
 }
 
@@ -15,5 +15,5 @@ RESPONSE_MAPPING = {
   1: Success,
   2: InvalidAction,
   3: InvalidNotifyKey,
-  4: CharNoExists
+  4: AvatarNoExists
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from threading import Thread
+from threading import Thread, Lock
 from socket import socket, AF_INET, SOCK_STREAM
 
 from wombat.stream import Stream
@@ -12,96 +12,110 @@ from wombat.notify.notification import *
 
 class CombatClient:
   def __init__(self):
-    self.scontrol = socket(AF_INET, SOCK_STREAM)
-    self.snotify = socket(AF_INET, SOCK_STREAM)
-    self.control = Stream(self.scontrol, send=ACTION_MAPPING,
-                          recv=RESPONSE_MAPPING)
-    self.notify = Stream(self.snotify, recv=NOTIFY_MAPPING)
+    self.control = socket(AF_INET, SOCK_STREAM)
+    self.lcontrol = Lock()
+    self.notify = socket(AF_INET, SOCK_STREAM)
+    self.wcontrol = Stream(send=ACTION_MAPPING, recv=RESPONSE_MAPPING)
+    self.wnotify = Stream(recv=NOTIFY_MAPPING)
     self.debugs = []
+    self.nhook = self.ndebug
+    
+    self.user = None
+    self.avatar = None
   
   def debug(self, msg):
     self.debugs.append(msg)
   
   def start(self, host, cport, nport):
-    self.scontrol.connect((host, cport))
+    self.control.connect((host, cport))
     nt = Thread(target=self.nstart, args=(host, nport))
     nt.daemon = True
     nt.start()
   
   def nstart(self, host, port):
-    self.snotify.connect((host, port))
-    key = self.notify.recv()
+    self.notify.connect((host, port))
+    key = self.wnotify.recv(self.notify)
     if isinstance(key, NotifyKey):
-      with self.control.lock:
-        res = self.control.sendrecv(ClaimNotify(key.key))
+      with self.lcontrol:
+        res = self.wcontrol.sendrecv(self.control, ClaimNotify(key.key))
       if res.SUCCESS:
         while 1:
-          res = self.notify.recv()
-          if res:
-            self.nhandle(res)
-          else:
-            break
+          self.nhook(self.wnotify.recv(self.notify))
       else:
         self.debug("Failed to claim notify connection.")
     else:
       self.debug("Failed to receive ClaimKey on notify connection.")
   
-  def nhandle(self, n):
+  def ndebug(self, n):
     if isinstance(n, RecvMessage):
-      self.debug("[{0}]: {1}".format(n.char, n.message))
+      self.debug("[{0}]: {1}".format(n.avatar, n.message))
     else:
       self.debug("Received notification: {0}".format(n.__class__))
   
   def login(self, user, password):
-    with self.control.lock:
-      if self.control.sendrecv(Login(user, password)).SUCCESS:
+    with self.lcontrol:
+      res = self.wcontrol.sendrecv(self.control, Login(user, password))
+      if res.SUCCESS:
+        self.user = user
         self.debug("Login success: {0}".format(user))
       else:
         self.debug("Login failure: {0}".format(user))
+      return res
   
-  def charselect(self, char):
-    with self.control.lock:
-      if self.control.sendrecv(CharSelect(char)).SUCCESS:
-        self.debug("Character selected: {0}".format(char))
+  def avatarselect(self, avatar):
+    with self.lcontrol:
+      res = self.wcontrol.sendrecv(self.control, AvatarSelect(avatar))
+      if res.SUCCESS:
+        self.avatar = avatar
+        self.debug("Avatar selected: {0}".format(avatar))
       else:
-        self.debug("Failed to select character: {0}.".format(char))
+        self.debug("Failed to select character: {0}.".format(avatar))
+      return res
   
-  def charquit(self):
-    with self.control.lock:
-      if self.control.sendrecv(CharQuit()).SUCCESS:
-        self.debug("Character quit success.")
+  def avatarquit(self):
+    with self.lcontrol:
+      res = self.wcontrol.sendrecv(self.control, AvatarQuit())
+      if res.SUCCESS:
+        self.avatar = None
+        self.debug("Avatar quit success.")
       else:
-        self.debug("Character quit failure.")
+        self.debug("Avatar quit failure.")
+      return res
   
   def logout(self):
-    with self.control.lock:
-      if self.control.sendrecv(Logout()).SUCCESS:
+    with self.lcontrol:
+      res = self.wcontrol.sendrecv(self.control, Logout())
+      if res.SUCCESS:
+        self.user = None
         self.debug("Logout success.")
       else:
         self.debug("Logout failure.")
+      return res
     
   def quit(self):
-    with self.control.lock:
-      if self.control.sendrecv(Quit()).SUCCESS:
+    with self.lcontrol:
+      res = self.wcontrol.sendrecv(self.control, Quit())
+      if res.SUCCESS:
         self.debug("Quit success.")
-        return True
       else:
         self.debug("Quit failure.")
-        return False
+      return res
   
-  def sendmessage(self, char, message):
-    with self.control.lock:
-      res = self.control.sendrecv(SendMessage(char, message))
+  def sendmessage(self, avatar, message):
+    with self.lcontrol:
+      res = self.wcontrol.sendrecv(self.control, SendMessage(avatar, message))
       if res.SUCCESS:
         self.debug("Message sent.")
-      elif isinstance(res, CharNoExists):
-        self.debug("Character does not exist: {0}".format(res.char))
+      elif isinstance(res, AvatarNoExists):
+        self.debug("Avatar does not exist: {0}".format(res.avatar))
       else:
         self.debug("Failed to send message.")
+      return res
 
 if __name__ == '__main__':
   from argparse import ArgumentParser
-  parser = ArgumentParser(description="Interactive combat client shell.")
+  parser = ArgumentParser(description="Combat client application.")
+  parser.add_argument('-g', action='store_true')
   parser.add_argument('-r', default='127.0.0.1')
   parser.add_argument('-c', type=int, default=10000)
   parser.add_argument('-n', type=int, default=10001)
@@ -109,5 +123,9 @@ if __name__ == '__main__':
   client = CombatClient()
   client.start(args.r, args.c, args.n)
   
-  from cli import ClientShell
-  ClientShell(client).cmdloop()
+  if args.g:
+    from gui import ClientUI
+    ClientUI(client).start()
+  else:
+    from cli import ClientShell
+    ClientShell(client).cmdloop()

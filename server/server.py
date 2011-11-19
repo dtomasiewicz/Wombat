@@ -8,10 +8,11 @@ from time import time, sleep
 
 from wombat.stream import Stream
 from wombat.notify.mapping import NOTIFY_MAPPING
-from wombat.notify.notification import NotifyKey
+from wombat.notify.notification import *
 from wombat.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
 
 from combatserver.client import Client
+from combatserver.avatar import Avatar
 
 class CombatServer:
   LISTEN_BACKLOG = 5
@@ -21,17 +22,20 @@ class CombatServer:
     # listener sockets for incoming control and notify connections
     self._clisten = socket(AF_INET, SOCK_STREAM)
     self._nlisten = socket(AF_INET, SOCK_STREAM)
+    
+    # stream wrappers for control and notify connections
+    self._controlw = Stream(recv=ACTION_MAPPING, send=RESPONSE_MAPPING)
+    self._notifyw = Stream(send=NOTIFY_MAPPING)
   
   def debug(self, message):
     print(message)
-    #pass
   
   def start(self, host, cport, nport):
-    # map of clients by their control sockets
-    self.clients = {}
+    # map of clientinfo tuples by their control sockets
+    self._clients = {}
     
     # map of anonymous notify streams by their claim key
-    self._anstreams = {}
+    self._anotifys = {}
     
     # listens for incoming control connections
     self._clisten.bind((host, cport))
@@ -44,63 +48,86 @@ class CombatServer:
     self._nlisten.listen(self.LISTEN_BACKLOG)
     
     # set of idle connections to be select()ed from
-    self.idle = set((self._clisten, self._nlisten))
+    self._idle = set((self._clisten, self._nlisten))
     
     # cleanup daemon for unclaimed notify threads
-    cleanup = Thread(target=self.cleanup)
-    cleanup.daemon = True
-    cleanup.start()
+    #cleanup = Thread(target=self.cleanup)
+    #cleanup.daemon = True
+    #cleanup.start()
     
     while 1:
-      if len(self.idle):
-        for sock in select(self.idle, [], [], self.SELECT_TIMEOUT)[0]:
-          self.idle.remove(sock)
+      if len(self._idle):
+        for sock in select(self._idle, [], [], self.SELECT_TIMEOUT)[0]:
+          self._idle.remove(sock)
           if sock == self._clisten:
             Thread(target=self._caccept).start()
           elif sock == self._nlisten:
             Thread(target=self._naccept).start()
           else:
-            Thread(target=self.clients[sock].act).start()
+            Thread(target=self._clientdata, args=(self._clients[sock],)).start()
       elif self.SELECT_TIMEOUT > 0:
         sleep(self.SELECT_TIMEOUT)
   
+  def _clientdata(self, client):
+    while client.state:
+      try:
+        action = self._controlw.recv(client.control)
+      except:
+        """
+        if isinstance(e, CodeError):
+          self.debug("Received invalid message code: {0}".format(e.code))
+        elif isinstance(e, socketerror):
+          self.debug("{0} occurred during message reception".format(errorcode[e.errno]))
+        elif isinstance(e, structerror):
+          self.debug("Failed to unpack message data")
+        """
+        client.state = None
+      else:
+        with client:
+          res = client.state(action)
+        self._controlw.send(client.control, res)
+        
+        # only continue processing if more data on socket
+        if len(select([client.control], [], [], 0)[0]) == 0:
+          break
+    
+    if not client.state:
+      self._disconnect(client)
+    else:
+      self._idle.add(client.control)
+  
+  """
   def cleanup(self):
     while 1:
       for key, notify in tuple(self._anstreams.items()):
         with notify.lock:
+          # make sure the stream wasn't claimed while waiting for lock
           if self._anstreams.get(key, None) and time() > notify.created + 5:
             notify.socket.close()
             del self._anstreams[key]
       sleep(5)
+  """
   
   def claimnotify(self, key):
     """
     Claims an anonymous notify socket, returning and dereferencing it.
-    Since notify sockets become a shared resource once they are placed in 
-    _anstreams, we must ensure we have the stream's lock AND it is still in
-    _anstreams before handing it to the client.
     """
-    notify = self._anstreams.get(key, None)
+    notify = self._anotifys.get(key, None)
     if notify:
-      with notify.lock:
-        # must get it again, in case it was claimed before we acquired the lock
-        notify = self._anstreams.get(key, None)
-        if notify:
-          del self._anstreams[key]
-        return notify
+      del self._anotifys[key]
+      return notify
     else:
       return None
   
   def _caccept(self):
     """ Connects a new client. """
     sock, addr = self._clisten.accept()
-    self.idle.add(self._clisten)
+    self._idle.add(self._clisten)
     
     sock.setblocking(0)
-    self.clients[sock] = Client(self, Stream(sock, recv=ACTION_MAPPING, 
-                                             send=RESPONSE_MAPPING), addr)
-    self.clients[sock].debug("Connected")
-    self.idle.add(sock)
+    self._clients[sock] = Client(self, sock, addr)
+    self._clients[sock].debug("Connected")
+    self._idle.add(sock)
   
   def _naccept(self):
     """
@@ -109,33 +136,41 @@ class CombatServer:
     client for this purpose.
     """
     sock, addr = self._nlisten.accept()
-    self.idle.add(self._nlisten)
+    self._idle.add(self._nlisten)
     
     sock.setblocking(0)
     key = randrange(65535) # this will need to be more secure in the future
-    self._anstreams[key] = Stream(sock, send=NOTIFY_MAPPING)
-    self._anstreams[key].send(NotifyKey(key))
+    self._anotifys[key] = sock
+    self._notifyw.send(sock, NotifyKey(key))
   
-  def disconnect(self, control):
-    """
-    Disconnects a client, given its control socket.
-    TODO: Make this actually close the control and notify connections... be
-          careful with locking.
-    """
-    client = self.clients.get(control, None)
-    if client:
-      del self.clients[control] # delete first so no more actions
-      client.debug("Disconnected")
+  def _disconnect(self, client):
+    """ Disconnects a client. """
+    del self._clients[client.control]
+    with client:
+      client.control.close()
+      if client.notify:
+        client.notify.close()
+      if client.avatar:
+        with client.avatar:
+          client.avatar.setclient(None)
   
-  def clientbychar(self, char):
+  def message(self, to, from_, message):
     """
-    Returns a client, given their character name. When we want to get serious 
-    about this, we should map them. For now, this O(n) algo is cleaner.
+    Sends a message between two avatars.
+    
+    This will need to be rafactored later. Ideally, Client objects will be
+    (indirectly?) mapped by their avatar names once they select an avatar.
     """
-    for c in self.clients.values():
-      if c.char == char:
-        return c
-    return None
+    for c in self._clients.values():
+      with c:
+        if c.avatar and c.avatar.name == to:
+          self._notifyw.send(c.notify, RecvMessage(from_, message))
+          return True
+    return False
+  
+  def avatar(self, name):
+    """ Loads the avatar with the given name from the data source. """
+    return Avatar(name)
 
 if __name__ == "__main__":
   server = CombatServer()

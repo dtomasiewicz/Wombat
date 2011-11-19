@@ -1,4 +1,5 @@
 from wombat.message import Message
+from wombat.packutils import recvstring
 
 # generic control action (sends a UTF-8 string)
 class Response(Message):
@@ -13,16 +14,14 @@ class InvalidAction(Response):
 class InvalidNotifyKey(Response):
   pass
 
-class CharNoExists(Response):
+class AvatarNoExists(Response):
   SIMPLE = False
   
-  def __init__(self, char):
-    self.char = char
+  def __init__(self, avatar):
+    self.avatar = avatar
     
   def pack(self):
-    cb = bytes(self.char, self.STR_ENC)
-    cl = len(cb)
-    return ('H{0}s'.format(cl), cl, cb)
+    return prepack(self.avatar)
   
-  def unpack(stream):
-    return CharNoExists(stream.recvstring(stream.recvshort(), __class__.STR_ENC))
+  def unpack(sock):
+    return Avatar(recvstring(sock))

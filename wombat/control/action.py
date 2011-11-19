@@ -1,4 +1,5 @@
 from wombat.message import Message
+from wombat.packutils import prepack, recvstring, recvintus
 
 # generic control action (sends a UTF-8 string)
 class Action(Message):
@@ -13,10 +14,10 @@ class ClaimNotify(Action):
     self.key = key
   
   def pack(self):
-    return ('H', self.key)
+    return prepack(self.key)
   
-  def unpack(stream):
-    return ClaimNotify(stream.recvshort())
+  def unpack(sock):
+    return ClaimNotify(recvintus(sock))
 
 # Type(bytelen)  Data
 # short          user name byte-length (u)
@@ -31,16 +32,10 @@ class Login(Action):
     self.password = pwd
   
   def pack(self):
-    usrb = bytes(self.user, self.STR_ENC)
-    ul = len(usrb)
-    pwdb = bytes(self.password, self.STR_ENC)
-    pl = len(pwdb)
-    return ('H{0}sH{1}s'.format(ul, pl), ul, usrb, pl, pwdb)
+    return prepack(self.user, self.password)
     
-  def unpack(stream):
-    usr = stream.recvstring(stream.recvshort(), __class__.STR_ENC)
-    pwd = stream.recvstring(stream.recvshort(), __class__.STR_ENC)
-    return Login(usr, pwd)
+  def unpack(sock):
+    return Login(recvstring(sock), recvstring(sock))
 
 class Logout(Action):
   pass
@@ -49,45 +44,37 @@ class Quit(Action):
   pass
 
 # Type(bytelen)  Data
-# short          character name byte-length (l)
-# string(l)      character name
-class CharSelect(Action):
+# short          avatar name byte-length (l)
+# string(l)      avatar name
+class AvatarSelect(Action):
   SIMPLE = False
   
-  def __init__(self, char):
-    self.char = char
+  def __init__(self, avatar):
+    self.avatar = avatar
     
   def pack(self):
-    cb = bytes(self.char, self.STR_ENC)
-    cl = len(cb)
-    return ('H{0}s'.format(cl), cl, cb)
+    return prepack(self.avatar)
   
-  def unpack(stream):
-    return CharSelect(stream.recvstring(stream.recvshort(), __class__.STR_ENC))
+  def unpack(sock):
+    return AvatarSelect(recvstring(sock))
 
-class CharQuit(Action):
+class AvatarQuit(Action):
   pass
 
 # Type(bytelen)  Data
-# short          character name byte-length (c)
-# string(c)      character name
+# short          avatar name byte-length (a)
+# string(a)      avatar name
 # short          message byte-length (m)
 # string(m)      message
 class SendMessage(Action):
   SIMPLE = False
   
-  def __init__(self, char, message):
-    self.char = char
+  def __init__(self, avatar, message):
+    self.avatar = avatar
     self.message = message
 
   def pack(self):
-    cb = bytes(self.char, self.STR_ENC)
-    cl = len(cb)
-    mb = bytes(self.message, self.STR_ENC)
-    ml = len(mb)
-    return ('H{0}sH{1}s'.format(cl, ml), cl, cb, ml, mb)
+    return prepack(self.avatar, self.message)
   
-  def unpack(stream):
-    char = stream.recvstring(stream.recvshort(), __class__.STR_ENC)
-    message = stream.recvstring(stream.recvshort(), __class__.STR_ENC)
-    return SendMessage(char, message)
+  def unpack(sock):
+    return SendMessage(recvstring(sock), recvstring(sock))

@@ -1,4 +1,5 @@
 from wombat.message import Message
+from wombat.packutils import recvintus, recvstring, prepack
 
 class Notification(Message):
   pass
@@ -10,10 +11,10 @@ class NotifyKey(Notification):
     self.key = key
   
   def pack(self):
-    return ('H', self.key)
+    return prepack(self.key)
   
-  def unpack(stream):
-    return NotifyKey(stream.recvshort())
+  def unpack(sock):
+    return NotifyKey(recvintus(sock))
 
 # Type(bytelen)  Data
 # short          sender's name byte-length (c)
@@ -23,18 +24,12 @@ class NotifyKey(Notification):
 class RecvMessage(Notification):
   SIMPLE = False
   
-  def __init__(self, char, message):
-    self.char = char
+  def __init__(self, avatar, message):
+    self.avatar = avatar
     self.message = message
 
   def pack(self):
-    cb = bytes(self.char, self.STR_ENC)
-    cl = len(cb)
-    mb = bytes(self.message, self.STR_ENC)
-    ml = len(mb)
-    return ('H{0}sH{1}s'.format(cl, ml), cl, cb, ml, mb)
+    return prepack(self.avatar, self.message)
   
-  def unpack(stream):
-    char = stream.recvstring(stream.recvshort(), __class__.STR_ENC)
-    message = stream.recvstring(stream.recvshort(), __class__.STR_ENC)
-    return RecvMessage(char, message)
+  def unpack(sock):
+    return RecvMessage(recvstring(sock), recvstring(sock))

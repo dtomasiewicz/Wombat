@@ -2,8 +2,6 @@ from cmd import Cmd
 from argparse import ArgumentParser
 from shlex import split
 
-from combatclient.client import CombatClient
-
 class ClientShell(Cmd):
   prompt = ">>> "
   
@@ -13,7 +11,7 @@ class ClientShell(Cmd):
   
   def do_EOF(self, line):
     print("")
-    if self.client.quit():
+    if self.client.quit().SUCCESS:
       return True
   
   def precmd(self, line):
@@ -21,7 +19,6 @@ class ClientShell(Cmd):
       print("=== NEW NOTIFICATIONS SINCE PREVIOUS COMMAND ===")
       self.dumpdebug()
       print("================================================")
-    
     return line
   
   def postcmd(self, stop, line):
@@ -45,31 +42,31 @@ class ClientShell(Cmd):
     except SystemExit:
       pass
   
-  def do_charselect(self, line):
-    parser = ArgumentParser(description="Choose your character!")
-    parser.add_argument('character')
+  def do_avatarselect(self, line):
+    parser = ArgumentParser(description="Choose your avatar!")
+    parser.add_argument('avatar')
     try:
       args = parser.parse_args(split(line))
-      self.client.charselect(args.character)
+      self.client.avatarselect(args.avatar)
     except SystemExit:
       pass
   
-  def do_charquit(self, line):
-    self.client.charquit()
+  def do_avatarquit(self, line):
+    self.client.avatarquit()
   
   def do_logout(self, line):
     self.client.logout()
   
   def do_quit(self, line):
-    if self.client.quit():
+    if self.client.quit().SUCCESS:
       return True
 
   def do_msg(self, line):
-    parser = ArgumentParser(description="Send a message to another character.")
-    parser.add_argument('character')
+    parser = ArgumentParser(description="Send a message to another avatar.")
+    parser.add_argument('avatar')
     parser.add_argument('message')
     try:
       args = parser.parse_args(split(line))
-      self.client.sendmessage(args.character, args.message)
+      self.client.sendmessage(args.avatar, args.message)
     except SystemExit:
       pass
