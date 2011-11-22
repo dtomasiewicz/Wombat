@@ -22,6 +22,8 @@ class Stream:
     
     self.host = host
     self.port = port
+    self.last_send = None
+    self.last_recv = None
   
   def connect(self, host, port):
     self._socket.connect((host, port))
@@ -44,6 +46,7 @@ class Stream:
     else:
       fmt, *data = message.pack()
     packed = pack('!H'+fmt, self.sendmap[message.__class__], *data)
+    self.last_send = time()
     return self._socket.send(packed)
   
   def recv(self):
@@ -54,6 +57,7 @@ class Stream:
     op = recvintus(self._socket)
     opclass = self.recvmap.get(op, None)
     if opclass:
+      self.last_recv = time()
       return opclass() if opclass.SIMPLE else opclass.unpack(self._socket)
     else:
       raise CodeError(op)

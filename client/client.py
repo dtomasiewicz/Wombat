@@ -34,10 +34,16 @@ class CombatClient:
     key = self.notify.recv()
     if isinstance(key, NotifyKey):
       with self.lcontrol:
-        res = self.control.sendrecv(ClaimNotify(key.key))
+        try:
+          res = self.control.sendrecv(ClaimNotify(key.key))
+        except:
+          return
       if res.SUCCESS:
         while 1:
-          self.nhook(self.notify.recv())
+          try:
+            self.nhook(self.notify.recv())
+          except:
+            break
       else:
         self.debug("Failed to claim notify connection.")
     else:

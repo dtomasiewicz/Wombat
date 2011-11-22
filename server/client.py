@@ -25,7 +25,7 @@ class Client(Lockable):
   
   def identity(self):
     """ Unique string identifying the client, composed of socket id and IP. """
-    return "{0}@{1}".format(id(self), self.control.host)
+    return "{0}".format(id(self))
   
   def debug(self, msg):
     """ Sends client-relevant debugging info to the server. """
@@ -36,21 +36,12 @@ class Client(Lockable):
     Client state after opening the client application or after logging out.
     Valid actions: ClaimNotify, Login, Quit
     """
-    if isinstance(action, ClaimNotify):
-      self.notify = self.server.claimnotify(action.key)
-      if self.notify:
-        return Success()
-      else:
-        return InvalidNotifyKey()
-    
-    elif isinstance(action, Login):
+    if isinstance(action, Login):
       self.user = action.user
-      self.debug("Logged in as {0}".format(self.user))
       self.state = self.s_loggedin
       return Success()
       
     elif isinstance(action, Quit):
-      self.debug("Quit")
       self.state = None
       return Success()
       
@@ -64,17 +55,19 @@ class Client(Lockable):
     """
     
     if isinstance(action, Logout):
-      self.debug("Logged out")
       self.user = None
       self.state = self.s_start
       return Success()
         
     elif isinstance(action, AvatarSelect):
       self.avatar = self.server.avatar(action.avatar)
-      self.avatar.setclient(self)
-      self.debug("Selected {0}".format(self.avatar.name))
-      self.state = self.s_avatarselected
-      return Success()
+      if self.avatar:
+        with self.avatar:
+          self.avatar.client = self
+        self.state = self.s_avatarselected
+        return Success()
+      else:
+        return AvatarNoExists(action.avatar)
       
     else:
       return InvalidAction()
@@ -83,12 +76,12 @@ class Client(Lockable):
     """
     Client state after selecting an avatar.
     """
-    
-    if isinstance(action, AvatarQuit):
-      self.debug("Deselected {0}".format(self.avatar.name))
-      self.avatar = None
-      self.state = self.s_loggedin
-      return Success()
-    
-    else:
-      return self.avatar.act(action)
+    with self.avatar:
+      if isinstance(action, AvatarQuit):
+        self.avatar.client = None
+        self.avatar = None
+        self.state = self.s_loggedin
+        return Success()
+      
+      else:
+        return self.avatar.act(action)

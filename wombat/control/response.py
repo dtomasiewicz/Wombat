@@ -1,5 +1,5 @@
 from wombat.message import Message
-from wombat.packutils import recvstring
+from wombat.packutils import prepack, recvstring
 
 # generic control action (sends a UTF-8 string)
 class Response(Message):
@@ -24,4 +24,4 @@ class AvatarNoExists(Response):
     return prepack(self.avatar)
   
   def unpack(sock):
-    return Avatar(recvstring(sock))
+    return AvatarNoExists(recvstring(sock))
