@@ -2,7 +2,7 @@ from wombat.control.action import *
 from wombat.control.response import *
 from wombat.notify.notification import *
 
-from data.model import Model
+from combatserver.datamodel import Model
 
 class Avatar(Model):
   """ Avatars are player-controlled Units. """

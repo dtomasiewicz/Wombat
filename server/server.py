@@ -15,7 +15,7 @@ from wombat.control.response import Success, InvalidNotifyKey
 
 from combatserver.client import Client
 from combatserver.avatar import Avatar
-from data.source import Source
+from postgresql import driver
 
 class CombatServer:
   
@@ -41,7 +41,7 @@ class CombatServer:
     self._anotifys = {}
     self._anotifyslock = Lock()
     
-    self._data = Source(datacfg)
+    self._data = driver.connect(**datacfg)
   
   def debug(self, message):
     print(message)
