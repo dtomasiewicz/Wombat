@@ -1,4 +1,4 @@
-from wombat.notify.notification import *
+from combatshared.notify.notification import *
 
 NOTIFY_MAPPING = {
   1: NotifyKey,

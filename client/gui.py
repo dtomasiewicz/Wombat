@@ -1,6 +1,6 @@
 from tkinter import *
 
-from wombat.notify.notification import *
+from combatshared.notify.notification import *
 
 class ClientUI:
   
@@ -11,7 +11,7 @@ class ClientUI:
     self.root.protocol("WM_DELETE_WINDOW", self.doquit)
     self.tdebug = Text(self.root, width=70, height=1, state=DISABLED)
     self.tdebug.grid(row=0)
-    self.showlogin()
+    self.showavatarselect()
   
   def debug(self, item):
     self.tdebug.config(state=NORMAL)
@@ -34,6 +34,7 @@ class ClientUI:
     else:
       print(s)
     
+  """
   def showlogin(self):
     self.login = Frame(self.root)
     self.user = Entry(self.login)
@@ -56,6 +57,7 @@ class ClientUI:
       self.password.delete(0, END)
       self.password.focus_set()
       self.debug("Login failed.")
+  """
   
   def showavatarselect(self):
     self.avatarselect = Frame(self.root)
@@ -115,7 +117,8 @@ class ClientUI:
     else:
       self.debug("AvatarQuit failed.")
     return False
-      
+  
+  """
   def dologout(self):
     if not self.client.avatar or self.doavatarquit():
       if self.client.logout().SUCCESS:
@@ -126,9 +129,10 @@ class ClientUI:
       else:
         self.debug("Logout failed.")
     return False
+  """
   
   def doquit(self):
-    if not self.client.user or self.dologout():
+    if not self.client.avatar or self.doavatarquit():
       if self.client.quit().SUCCESS:
         self.root.quit()
         return True

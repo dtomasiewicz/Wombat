@@ -40,11 +40,7 @@ class Stream:
     Translates a Message into bytes based on the send mapping and sends these 
     bytes over the socket.
     """
-    if message.SIMPLE:
-      fmt = ''
-      data = []
-    else:
-      fmt, *data = message.pack()
+    fmt, *data = message.pack() if message.pack else ['']
     packed = pack('!H'+fmt, self.sendmap[message.__class__], *data)
     self.last_send = time()
     return self._socket.send(packed)
@@ -58,7 +54,7 @@ class Stream:
     opclass = self.recvmap.get(op, None)
     if opclass:
       self.last_recv = time()
-      return opclass() if opclass.SIMPLE else opclass.unpack(self._socket)
+      return opclass.unpack(self._socket) if opclass.unpack else opclass()
     else:
       raise CodeError(op)
   

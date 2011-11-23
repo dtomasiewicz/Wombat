@@ -1,0 +1,62 @@
+== Current Model ==
+
+A thread is spawned for each action. The action is processed in its entirety,
+then a status response is sent to the client and the thread is closed. Since 
+any resources mutated by the action may be in use by other threads, a lock is
+required for each mutation or non-atomic analysis of a shared resource.
+
+Drawbacks:
+ - With lots of shared resources, locking kills performance.
+ - A response can be sent to the user as soon as we know if they CAN perform an
+   action-- with this model, we wait until the action is actually performed.
+
+== Proposed Model ==
+
+A two-stage model. The first stage is similar to the current model, however no
+resources are mutated. Rather, actions that would mutate resources are queued 
+until the second stage. In the second stage, all queued actions are processed 
+by a single thread.
+
+Benefits:
+ - Resource locking no longer needed, which greatly simplifies coding/testing.
+ - Action responses can be sent to users quicker.
+
+Drawbacks:
+ - Slight delay between users receiving a response and seeing the effects of
+   an action.
+   --> If this delay is small enough, it will be insignificant compared to 
+       network latency.
+ - Since stage 2 is not run in parallel, other cores will be near-idle during
+   this stage if user actions require shared resources.
+   --> Might be able to minimize the runtime of this stage by performing 
+       unrelated actions in parallel, with minimal locking.
+ - It's possible that an action that is queued for processing would forbid a
+   subsequent action that has already been OK'd. Our options:
+   --> Perform the subsequent action anyway.
+        - Leads to strange, seemingly "impossible" events. For example, three 
+          attacks against a unit are queued (success responses have been sent)
+          and the unit dies after the second. Third attack has no effect, but
+          still triggers the cooldown.
+   --> Do not perform the subsequent action.
+        - Response sent to user was inaccurate.
+   --> Wait until the action is actually performed to respond to the user.
+        - Reduces parallelism, though might be negligible.
+
+Structure:
+ - add _cthreads, _queue, _qlock to CombatServer
+ - ready clients are selected
+   - spawned client threads are joined to the main thread
+   - when a client thread needs to add an action to the queue, it acquires _qlock
+     and appends it to _queue
+ - when all threads finish, the queue is processed in-order by the main thread
+
+Data Realms:
+
+Global
+ - Account
+
+Server
+ - Avatar
+
+Instance
+ - Unit

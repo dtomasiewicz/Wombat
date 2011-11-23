@@ -2,24 +2,30 @@
 
 from threading import Thread, Lock
 from select import select
-from socket import socket, AF_INET, SOCK_STREAM
-from random import randrange
+from socket import socket, AF_INET, SOCK_STREAM, error as socketerror
+from struct import error as structerror
 from time import time, sleep
+from collections import deque
+from random import randrange
 
 from wombat.stream import Stream
-from wombat.notify.mapping import NOTIFY_MAPPING
-from wombat.notify.notification import *
-from wombat.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
-from wombat.control.action import ClaimNotify
-from wombat.control.response import Success, InvalidNotifyKey
+from wombat.message import CodeError
+from combatshared.notify.mapping import NOTIFY_MAPPING
+from combatshared.notify.notification import *
+from combatshared.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
 
+from combatserver.reactor import Reactor, REALM, INSTANCE
+from combatserver.reaction.mapping import REACTION_MAPPING
+from combatserver.event import Event
 from combatserver.client import Client
 from combatserver.avatar import Avatar
-from postgresql import driver
 
-class CombatServer:
+class RealmServer:
   
-  def __init__(self, srvcfg, datacfg):
+  
+  def __init__(self, data, srvcfg):
+    self._data = data
+    
     self._host = srvcfg['host']
     self._cport = int(srvcfg['control_port'])
     self._nport = int(srvcfg['notify_port'])
@@ -27,24 +33,35 @@ class CombatServer:
     self._ntimeout = float(srvcfg['notify_timeout'])
     self._pollrate = float(srvcfg['poll_rate'])
     
+    self.clients = set()
+    
     # listener sockets for incoming control and notify connections
     self._clisten = socket(AF_INET, SOCK_STREAM)
     self._nlisten = socket(AF_INET, SOCK_STREAM)
     
-    self._clients = set()
-    self._idle = set() # idle sockets to be polled by select()
+    # set of idle clients to be polled by the next select()
+    self._idle = set()
+    self._idlelock = Lock()
     
-    self._avatars = {} # map of (loaded) avatars by name
-    self._avatarslock = Lock()
+    # list of read-only threads (must finish before queue is processed)
+    self._rothreads = []
+    
+    # reaction queue
+    self._queue = deque()
+    self._qlock = Lock()
     
     # map of anonymous notify streams by their claim key
     self._anotifys = {}
-    self._anotifyslock = Lock()
     
-    self._data = driver.connect(**datacfg)
+    self._reactor = Reactor(REACTION_MAPPING)
+    
+    # map of cached avatars by their name
+    self._avatars = {}
+  
   
   def debug(self, message):
     print(message)
+  
   
   def start(self):
     # listens for incoming control connections
@@ -57,94 +74,144 @@ class CombatServer:
     self._nlisten.setblocking(0)
     self._nlisten.listen(self._backlog)
     
-    # set of idle connections to be select()ed from
     self._idle = set((self._clisten, self._nlisten))
-    
-    # cleanup daemon for unclaimed notify threads
-    cleanup = Thread(target=self.cleanup)
-    cleanup.daemon = True
-    cleanup.start()
     
     while 1:
       if len(self._idle):
         for ready in select(self._idle, [], [], self._pollrate)[0]:
           self._idle.remove(ready)
           if isinstance(ready, Client):
-            Thread(target=self._clientdata, args=[ready]).start()
+            thread = Thread(target=self._clientdata, args=[ready])
           elif ready == self._clisten:
-            Thread(target=self._caccept).start()
+            thread = Thread(target=self._caccept)
           elif ready == self._nlisten:
-            Thread(target=self._naccept).start()
+            thread = Thread(target=self._naccept)
           else:
-            self.debug("Unrecognized select: {0}".format(ready))
+            raise Exception("Unrecognized select: {0}".format(ready))
+          self._rothreads.append(thread)
+          thread.start()
+        
+        while len(self._rothreads):
+          self._rothreads.pop().join()
+        
+        # all read-only threads are now finished
+        self._processqueue()
       elif self._pollrate > 0:
         sleep(self._pollrate)
   
-  def _clientdata(self, client):
-    while client.state:
-      try:
-        action = client.control.recv()
-      except BaseException as e:
-        if isinstance(e, CodeError):
-          self.debug("Received invalid message code: {0}".format(e.code))
-        elif isinstance(e, socketerror):
-          self.debug("{0} occurred during message reception".format(errorcode[e.errno]))
-        elif isinstance(e, structerror):
-          self.debug("Failed to unpack message data")
-        client.state = None
-      else:
-        with client:
-          start = time()
-          # notify connection can be claimed at any time
-          if isinstance(action, ClaimNotify):
-            client.notify = self.claimnotify(action.key)
-            if client.notify:
-              res = Success()
-            else:
-              res = InvalidNotifyKey()
-          else:
-            res = client.state(action)
-          ms = (time()-start)*1000
-          
-          client.debug("{0} => {1} in {2:.2f} ms".format(action, res, ms))
-        client.control.send(res)
-        
-        # only continue processing if more data on socket
-        if len(select([client], [], [], 0)[0]) == 0:
-          break
-    
-    if not client.state:
-      self._disconnect(client)
-    else:
+  
+  def queue(self, event):
+    with self._qlock:
+      self._queue.append(event)
+  
+  
+  def addclient(self, client):
+    self.clients.add(client)
+    self._idle.add(client)
+  
+  
+  def removeclient(self, client):
+    self.clients.remove(client)
+    client.realm = None
+    client.control.close()
+    client.control = None
+    if client.notify:
+      client.notify.close()
+      client.notify = None
+    if client.avatar:
+      client.avatar.client = None
+      client.avatar = None
+  
+  
+  def addnotify(self, notify):
+    key = randrange(65535) # this will need to be better in the future
+    self._anotifys[key] = notify
+    notify.send(NotifyKey(key))
+  
+  
+  def idleclient(self, client):
+    with self._idlelock:
       self._idle.add(client)
   
-  
-  def cleanup(self):
-    """
-    Closes notify connections that have not been claimed after NOTIFY_TIMEOUT 
-    seconds.
-    """
-    while 1:
-      for key, notify in tuple(self._anotifys.items()):
-        if notify.last_send > time()+self._ntimeout:
-          with self._anotifyslock:
-            # make sure it wasn't claimed while waiting for lock
-            if key in self._anotifys:
-              del self._anotifys[key]
-              notify.close()
-      sleep(5)
   
   def claimnotify(self, key):
     """
     Claims an anonymous notify socket, returning and dereferencing it.
     """
-    with self._anotifyslock:
-      notify = self._anotifys.get(key)
-      if notify:
-        del self._anotifys[key]
-        return notify
+    notify = self._anotifys.get(key)
+    if notify:
+      del self._anotifys[key]
+      return notify
+    else:
+      return None
+  
+  
+  def avatar(self, name):
+    """ Returns the avatar with the given name, if it exists. """
+    if not name in self._avatars:
+      a = Avatar.first(self._data, name=name)
+      if a:
+        self._avatars[name] = a
+    return self._avatars.get(name, None)
+  
+  
+  def _processqueue(self):
+    with self._qlock: # shouldn't really be necessary
+      while len(self._queue):
+        self._queue.popleft().process()
+        """
+        event.process()
+        reaction.process(client)
+        if res is False:
+          self.removeclient(client)
+        else:
+          if isinstance(res, Message):
+            client.debug("{0} => {1}".format(reaction.action, res))
+            client.control.send(res)
+          self._idle.add(client)
+        """
+
+
+  def _clientdata(self, client):
+    try:
+      reaction = self._reactor.dispatch(client, client.control.recv())
+    except (CodeError, socketerror, structerror) as e:
+      if isinstance(e, CodeError):
+        client.debug("Received invalid message code: {0}".format(e.code))
+      elif isinstance(e, socketerror):
+        client.debug("{0} occurred during message reception".format(errorcode[e.errno]))
+      elif isinstance(e, structerror):
+        client.debug("Failed to unpack message data")
+      self.queue(Event(self.removeclient, client))
+    else:
+      res = None
+      if reaction.DOMAIN is REALM:
+        if reaction.READONLY:
+          res = reaction.process()
+        else:
+          self.queue(reaction)
+      elif reaction.DOMAIN is INSTANCE:
+        if client.instance:
+          if reaction.READONLY:
+            res = reaction.process()
+          else:
+            client.instance.queue(reaction)
+        else:
+          res = InvalidAction()
       else:
-        return None
+        res = InvalidAction()
+      
+      # if we have a response already, send it and check for more data
+      if res:
+        client.debug("{0} => {1}".format(reaction.action, res))
+        client.control.send(res)
+        
+        if len(select([client], [], [], 0)[0]) == 1:
+          self._clientdata(client)
+        else:
+          self.idleclient(client)
+      # else response was deferred for queue processing
+  
   
   def _caccept(self):
     """ Connects a new client. """
@@ -156,9 +223,8 @@ class CombatServer:
         recv=ACTION_MAPPING, send=RESPONSE_MAPPING,
         sock=sock, host=host, port=port))
     
-    self._clients.add(client)
-    client.debug("Connected")
-    self._idle.add(client)
+    self.queue(Event(self.addclient, client))
+  
   
   def _naccept(self):
     """
@@ -172,32 +238,9 @@ class CombatServer:
     
     stream = Stream(send=NOTIFY_MAPPING, sock=sock, host=host, port=port)
     
-    key = randrange(65535) # this will need to be more secure in the future
-    self._anotifys[key] = stream
-    stream.send(NotifyKey(key))
-  
-  def _disconnect(self, client):
-    """ Disconnects a client. """
-    self._clients.remove(client)
-    with client:
-      client.control.close()
-      if client.notify:
-        client.notify.close()
-      if client.avatar:
-        with client.avatar:
-          client.avatar.setclient(None)
-  
-  def avatar(self, name):
-    """ Returns the avatar with the given name, if it exists. """
-    a = self._avatars.get(name)
-    if not a:
-      a = Avatar.first(self._data, name=name)
-      if a:
-        with self._avatarslock:
-          # make sure it wasn't loaded by another thread while waiting for lock
-          if not name in self._avatars:
-            self._avatars[name] = a
-    return a
+    self.queue(Event(self.addnotify, stream))
+
+
 
 if __name__ == "__main__":
   from argparse import ArgumentParser
@@ -209,8 +252,9 @@ if __name__ == "__main__":
   config = ConfigParser()
   config.readfp(open(args.configfile))
   
-  server = CombatServer(
-      dict(config.items('server')), dict(config.items('datasource')))
+  from postgresql import driver
+  data = driver.connect(**dict(config.items('datasource')))
+  server = RealmServer(data, dict(config.items('server')))
   try:
     server.start()
   except KeyboardInterrupt:

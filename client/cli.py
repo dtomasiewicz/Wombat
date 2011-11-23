@@ -32,19 +32,6 @@ class ClientShell(Cmd):
     while len(self.client.debugs):
       print(self.client.debugs.pop(0))
   
-  def do_login(self, line):
-    parser = ArgumentParser(description="Login to the combat server.")
-    parser.add_argument('user')
-    parser.add_argument('password')
-    try:
-      args = parser.parse_args(split(line))
-      self.client.login(args.user, args.password)
-    except SystemExit:
-      pass
-  
-  def do_li(self, line):
-    return self.do_login(line)
-  
   def do_avatarselect(self, line):
     parser = ArgumentParser(description="Choose your avatar!")
     parser.add_argument('avatar')
@@ -62,12 +49,6 @@ class ClientShell(Cmd):
   
   def do_aq(self, line):
     return self.do_avatarquit(line)
-  
-  def do_logout(self, line):
-    self.client.logout()
-  
-  def do_lo(self, line):
-    return self.do_logout(line)
   
   def do_quit(self, line):
     if self.client.quit().SUCCESS:

@@ -4,11 +4,11 @@ from threading import Thread, Lock
 from socket import socket, AF_INET, SOCK_STREAM
 
 from wombat.stream import Stream
-from wombat.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
-from wombat.control.action import *
-from wombat.control.response import *
-from wombat.notify.mapping import NOTIFY_MAPPING
-from wombat.notify.notification import *
+from combatshared.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
+from combatshared.control.action import *
+from combatshared.control.response import *
+from combatshared.notify.mapping import NOTIFY_MAPPING
+from combatshared.notify.notification import *
 
 class CombatClient:
   def __init__(self):
@@ -17,7 +17,6 @@ class CombatClient:
     self.lcontrol = Lock()
     self.debugs = []
     self.nhook = self.ndebug
-    self.user = None
     self.avatar = None
   
   def debug(self, msg):
@@ -55,24 +54,16 @@ class CombatClient:
     else:
       self.debug("Received notification: {0}".format(n.__class__))
   
-  def login(self, user, password):
-    with self.lcontrol:
-      res = self.control.sendrecv(Login(user, password))
-      if res.SUCCESS:
-        self.user = user
-        self.debug("Login success: {0}".format(user))
-      else:
-        self.debug("Login failure: {0}".format(user))
-      return res
-  
   def avatarselect(self, avatar):
     with self.lcontrol:
       res = self.control.sendrecv(AvatarSelect(avatar))
       if res.SUCCESS:
         self.avatar = avatar
         self.debug("Avatar selected: {0}".format(avatar))
+      elif isinstance(res, AvatarInUse):
+        self.debug("Avatar in use: {0}.".format(avatar))
       else:
-        self.debug("Failed to select character: {0}.".format(avatar))
+        self.debug("Failed to select avatar: {0}".format(avatar))
       return res
   
   def avatarquit(self):
@@ -83,16 +74,6 @@ class CombatClient:
         self.debug("Avatar quit success.")
       else:
         self.debug("Avatar quit failure.")
-      return res
-  
-  def logout(self):
-    with self.lcontrol:
-      res = self.control.sendrecv(Logout())
-      if res.SUCCESS:
-        self.user = None
-        self.debug("Logout success.")
-      else:
-        self.debug("Logout failure.")
       return res
     
   def quit(self):
