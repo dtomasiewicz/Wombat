@@ -1,4 +1,4 @@
-from combatserver.datamodel import Model
+from wserver.datamodel import Model
 
 class Avatar(Model):
   """ Avatars are player-controlled Units. """

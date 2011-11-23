@@ -1,5 +1,5 @@
-from combatshared.control.action import *
-from combatshared.control.response import *
+from wshared.control.action import *
+from wshared.control.response import *
 
 ACTION_MAPPING = {
   1: Quit,

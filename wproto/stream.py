@@ -2,8 +2,8 @@ from time import time
 from struct import pack, unpack
 from socket import socket, error, AF_INET, SOCK_STREAM
 
-from wombat.message import CodeError
-from wombat.packutils import recvintus
+from wproto.message import CodeError
+from wproto.packutils import recvintus
 
 class Stream:
   """

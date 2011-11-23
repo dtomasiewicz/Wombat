@@ -1,5 +1,5 @@
-from wombat.message import Message
-from wombat.packutils import prepack, recvstring
+from wproto.message import Message
+from wproto.packutils import prepack, recvstring
 
 # generic control action (sends a UTF-8 string)
 class Response(Message):

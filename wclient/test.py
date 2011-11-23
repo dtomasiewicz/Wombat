@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from time import sleep
 
-from client import CombatClient
+from wclient.client import CombatClient
 
 c = CombatClient()
 c.start('127.0.0.1', 10000, 10001)

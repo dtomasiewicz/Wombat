@@ -1,5 +1,5 @@
-from wombat.message import Message
-from wombat.packutils import recvintus, recvstring, prepack
+from wproto.message import Message
+from wproto.packutils import recvintus, recvstring, prepack
 
 class Notification(Message):
   pass

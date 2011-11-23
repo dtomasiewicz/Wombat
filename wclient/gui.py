@@ -1,6 +1,6 @@
 from tkinter import *
 
-from combatshared.notify.notification import *
+from wshared.notify.notification import *
 
 class ClientUI:
   

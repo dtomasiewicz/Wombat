@@ -8,17 +8,17 @@ from time import time, sleep
 from collections import deque
 from random import randrange
 
-from wombat.stream import Stream
-from wombat.message import CodeError
-from combatshared.notify.mapping import NOTIFY_MAPPING
-from combatshared.notify.notification import *
-from combatshared.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
+from wproto.stream import Stream
+from wproto.message import CodeError
+from wshared.notify.mapping import NOTIFY_MAPPING
+from wshared.notify.notification import *
+from wshared.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
 
-from combatserver.reactor import Reactor, REALM, INSTANCE
-from combatserver.reaction.mapping import REACTION_MAPPING
-from combatserver.event import Event
-from combatserver.client import Client
-from combatserver.avatar import Avatar
+from wserver.reactor import Reactor, REALM, INSTANCE
+from wserver.reaction.mapping import REACTION_MAPPING
+from wserver.event import Event
+from wserver.client import Client
+from wserver.avatar import Avatar
 
 class RealmServer:
   

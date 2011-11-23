@@ -1,14 +1,25 @@
-This is actually 3 separate packages-- the client application (client), the server application (server), and the communication protocol (wombat). When the project gets larger, these components will be separated into separate repos.
+This is actually 4 separate packages-- the client application (wclient), the server application (wserver), shared client-server resources (wshared), and the communication protocol (wproto). When the project gets larger, these components will be separated into separate repos.
 
-To get it to work without changes to your PATH (or the source files themselves), symlink the protocol package in both the client and server directories.
-
-$ cd server
-$ ln -s ../wombat wombat
-$ cd ../client
-$ ln -s ../wombat wombat
+Since there is no installer, modules will need to be manually placed somewhere in Python's search path.
 
 All packages require Python 3. If Python 3 is your environment's default Python implementation, you can execute server.py and client.py directly in bash. If not, you will need to specify the python3 interpreter:
 
 Example:
+  $ python3 server.py
 
-$ python3 server.py
+To run the server, run server.py with the name of the configuration file you wish to use.
+
+Example:
+  $ ./server.py server.cfg
+
+The configuration file must contain valid connection information for a postgresql database instance.
+
+To run a command-line client (default), just execute client.py.
+
+Example:
+  $ ./client.py
+
+To run a graphical client, pass in the -g flag.
+
+Example:
+  $ ./client.py -g

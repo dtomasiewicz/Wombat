@@ -1,5 +1,5 @@
-from wombat.message import Message
-from wombat.packutils import prepack, recvstring, recvintus
+from wproto.message import Message
+from wproto.packutils import prepack, recvstring, recvintus
 
 class Action(Message):
   pass

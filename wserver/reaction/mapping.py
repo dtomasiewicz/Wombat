@@ -1,5 +1,5 @@
-from combatshared.control.action import *
-from combatserver.reaction import realm
+from wshared.control.action import *
+from wserver.reaction import realm
 
 REACTION_MAPPING = {
   Quit: realm.RQuit,

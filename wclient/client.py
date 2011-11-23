@@ -3,12 +3,12 @@
 from threading import Thread, Lock
 from socket import socket, AF_INET, SOCK_STREAM
 
-from wombat.stream import Stream
-from combatshared.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
-from combatshared.control.action import *
-from combatshared.control.response import *
-from combatshared.notify.mapping import NOTIFY_MAPPING
-from combatshared.notify.notification import *
+from wproto.stream import Stream
+from wshared.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
+from wshared.control.action import *
+from wshared.control.response import *
+from wshared.notify.mapping import NOTIFY_MAPPING
+from wshared.notify.notification import *
 
 class CombatClient:
   def __init__(self):

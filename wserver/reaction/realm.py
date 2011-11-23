@@ -1,7 +1,7 @@
-from combatshared.control.response import *
-from combatshared.notify.notification import *
+from wshared.control.response import *
+from wshared.notify.notification import *
 
-from combatserver.reactor import Reaction, REALM, INSTANCE
+from wserver.reactor import Reaction, REALM, INSTANCE
 
 
 class RQuit(Reaction):

@@ -1,4 +1,4 @@
-from combatshared.control.response import Response
+from wshared.control.response import Response
 
 
 REALM = "Realm"
