@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from threading import Thread, Lock
-from select import select
+from select import select, epoll, EPOLLIN
 from socket import socket, AF_INET, SOCK_STREAM, error as socketerror
 from struct import error as structerror
 from time import time, sleep
@@ -39,9 +39,9 @@ class RealmServer:
     self._clisten = socket(AF_INET, SOCK_STREAM)
     self._nlisten = socket(AF_INET, SOCK_STREAM)
     
-    # set of idle clients to be polled by the next select()
-    self._idle = set()
-    self._idlelock = Lock()
+    self._poll = epoll()
+    # map of idle clients by their fileno. only protected by the GIL.
+    self._idle = {}
     
     # list of read-only threads (must finish before queue is processed)
     self._rothreads = []
@@ -74,31 +74,32 @@ class RealmServer:
     self._nlisten.setblocking(0)
     self._nlisten.listen(self._backlog)
     
-    self._idle = set((self._clisten, self._nlisten))
+    self._poll.register(self._clisten, EPOLLIN)
+    self._poll.register(self._nlisten, EPOLLIN)
     
     while 1:
-      if len(self._idle):
-        for ready in select(self._idle, [], [], self._pollrate)[0]:
-          self._idle.remove(ready)
-          if isinstance(ready, Client):
-            thread = Thread(target=self._clientdata, args=[ready])
-          elif ready == self._clisten:
-            thread = Thread(target=self._caccept)
-          elif ready == self._nlisten:
-            thread = Thread(target=self._naccept)
+      for fileno,event in self._poll.poll(self._pollrate):
+        self._poll.unregister(fileno)
+        if fileno == self._clisten.fileno():
+          thread = Thread(target=self._caccept)
+        elif fileno == self._nlisten.fileno():
+          thread = Thread(target=self._naccept)
+        else:
+          client = self._idle.get(fileno)
+          if client:
+            del self._idle[fileno]
+            thread = Thread(target=self._clientdata, args=[client])
           else:
-            raise Exception("Unrecognized select: {0}".format(ready))
-          self._rothreads.append(thread)
-          thread.start()
-        
-        while len(self._rothreads):
-          self._rothreads.pop().join()
-        
-        # all read-only threads are now finished
-        self._processqueue()
-      elif self._pollrate > 0:
-        sleep(self._pollrate)
-  
+            raise Exception("Unrecognized select: {0}".format(fd))
+        self._rothreads.append(thread)
+        thread.start()
+      
+      while len(self._rothreads):
+        self._rothreads.pop().join()
+      
+      # all read-only threads are now finished
+      self._processqueue()
+    
   
   def queue(self, event):
     with self._qlock:
@@ -107,7 +108,7 @@ class RealmServer:
   
   def addclient(self, client):
     self.clients.add(client)
-    self._idle.add(client)
+    self.idleclient(client)
   
   
   def removeclient(self, client):
@@ -130,8 +131,8 @@ class RealmServer:
   
   
   def idleclient(self, client):
-    with self._idlelock:
-      self._idle.add(client)
+    self._idle[client.fileno()] = client
+    self._poll.register(client.fileno(), EPOLLIN)
   
   
   def claimnotify(self, key):
@@ -159,17 +160,6 @@ class RealmServer:
     with self._qlock: # shouldn't really be necessary
       while len(self._queue):
         self._queue.popleft().process()
-        """
-        event.process()
-        reaction.process(client)
-        if res is False:
-          self.removeclient(client)
-        else:
-          if isinstance(res, Message):
-            client.debug("{0} => {1}".format(reaction.action, res))
-            client.control.send(res)
-          self._idle.add(client)
-        """
 
 
   def _clientdata(self, client):
@@ -216,7 +206,7 @@ class RealmServer:
   def _caccept(self):
     """ Connects a new client. """
     sock, (host, port) = self._clisten.accept()
-    self._idle.add(self._clisten)
+    self._poll.register(self._clisten, EPOLLIN)
     sock.setblocking(0)
     
     client = Client(self, Stream(
@@ -233,7 +223,7 @@ class RealmServer:
     client for this purpose.
     """
     sock, (host, port) = self._nlisten.accept()
-    self._idle.add(self._nlisten)
+    self._poll.register(self._nlisten, EPOLLIN)
     sock.setblocking(0)
     
     stream = Stream(send=NOTIFY_MAPPING, sock=sock, host=host, port=port)

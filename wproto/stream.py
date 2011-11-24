@@ -30,7 +30,7 @@ class Stream:
     self.host = host
     self.port = port
   
-  def close(self, ):
+  def close(self):
     self._socket.close()
     self.host = None
     self.port = None
@@ -67,4 +67,5 @@ class Stream:
     return self.recv()
   
   def fileno(self):
+    """ Allows the Stream object to be used with select(). """
     return self._socket.fileno()
