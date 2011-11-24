@@ -4,16 +4,30 @@ from threading import Thread, Lock
 from socket import socket, AF_INET, SOCK_STREAM
 
 from wproto.stream import Stream
-from wshared.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
+
+from wshared.control.mapping import (ACTION_MAPPING as ACTION_BASE,
+                                     RESPONSE_MAPPING as RESPONSE_BASE)
 from wshared.control.action import *
 from wshared.control.response import *
-from wshared.notify.mapping import NOTIFY_MAPPING
+from wshared.rcontrol.mapping import ACTION_MAPPING, RESPONSE_MAPPING
+from wshared.rcontrol.action import *
+from wshared.rcontrol.response import *
+
+from wshared.notify.mapping import NOTIFY_MAPPING as NOTIFY_BASE
 from wshared.notify.notification import *
+from wshared.rnotify.mapping import NOTIFY_MAPPING
+from wshared.rnotify.notification import *
+
+def extend_map(m1, m2):
+  new = m1.copy()
+  new.update(m2)
+  return new
 
 class CombatClient:
   def __init__(self):
-    self.control = Stream(send=ACTION_MAPPING, recv=RESPONSE_MAPPING)
-    self.notify = Stream(recv=NOTIFY_MAPPING)
+    self.control = Stream(send=extend_map(ACTION_BASE, ACTION_MAPPING),
+                          recv=extend_map(RESPONSE_BASE, RESPONSE_MAPPING))
+    self.notify = Stream(recv=extend_map(NOTIFY_BASE, NOTIFY_MAPPING))
     self.lcontrol = Lock()
     self.debugs = []
     self.nhook = self.ndebug
@@ -39,10 +53,7 @@ class CombatClient:
           return
       if res.SUCCESS:
         while 1:
-          try:
-            self.nhook(self.notify.recv())
-          except:
-            break
+          self.nhook(self.notify.recv())
       else:
         self.debug("Failed to claim notify connection.")
     else:

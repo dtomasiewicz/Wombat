@@ -1,8 +1,9 @@
 from tkinter import *
 
-from wshared.notify.notification import *
+from wshared.rnotify.notification import RecvMessage
 
 class ClientUI:
+
   
   def __init__(self, client):
     self.client = client
@@ -12,12 +13,14 @@ class ClientUI:
     self.tdebug = Text(self.root, width=70, height=1, state=DISABLED)
     self.tdebug.grid(row=0)
     self.showavatarselect()
+
   
   def debug(self, item):
     self.tdebug.config(state=NORMAL)
     self.tdebug.delete(1.0, END)
     self.tdebug.insert(END, str(item))
     self.tdebug.config(state=DISABLED)
+
   
   def nhandle(self, n):
     if isinstance(n, RecvMessage):
@@ -33,31 +36,7 @@ class ClientUI:
       tar.config(state=DISABLED)
     else:
       print(s)
-    
-  """
-  def showlogin(self):
-    self.login = Frame(self.root)
-    self.user = Entry(self.login)
-    self.password = Entry(self.login, show='*')
-    self.password.bind("<Return>", self.dologin)
-    self.user.focus_set()
-    
-    self.login.grid(row=1)
-    Label(self.login, text="User").grid(row=0, column=0)
-    self.user.grid(row=0, column=1)
-    Label(self.login, text="Password").grid(row=1, column=0)
-    self.password.grid(row=1, column=1)
-  
-  def dologin(self, event):
-    res = self.client.login(self.user.get(), self.password.get())
-    if res.SUCCESS:
-      self.login.destroy()
-      self.showavatarselect()
-    else:
-      self.password.delete(0, END)
-      self.password.focus_set()
-      self.debug("Login failed.")
-  """
+
   
   def showavatarselect(self):
     self.avatarselect = Frame(self.root)
@@ -68,6 +47,7 @@ class ClientUI:
     self.avatarselect.grid(row=1)
     Label(self.avatarselect, text="Avatar").grid(row=0, column=0)
     self.avatar.grid(row=0, column=1)
+
   
   def doavatarselect(self, event):
     if self.client.avatarselect(self.avatar.get()).SUCCESS:
@@ -76,11 +56,13 @@ class ClientUI:
     else:
       self.debug("AvatarSelect failed.")
   
+
   def showavatarui(self):
     self.avatarui = Frame(self.root)
     self.avatarui.grid(row=1)
     self.showchat()
   
+
   def showchat(self):
     self.chat = Frame(self.avatarui)
     self.notifs = Text(self.chat, width=70, height=2, state=DISABLED)
@@ -96,6 +78,7 @@ class ClientUI:
     self.mrecip.grid(row=2, column=1)
     Label(self.chat, text="say").grid(row=2, column=2)
     self.message.grid(row=2, column=3)
+
   
   def dochat(self, event):
     avatar = self.mrecip.get()
@@ -107,6 +90,7 @@ class ClientUI:
       self.chats.config(state=DISABLED)
     else:
       self.debug("SendMessage failed.")
+
   
   def doavatarquit(self):
     if self.client.avatarquit().SUCCESS:
@@ -117,19 +101,7 @@ class ClientUI:
     else:
       self.debug("AvatarQuit failed.")
     return False
-  
-  """
-  def dologout(self):
-    if not self.client.avatar or self.doavatarquit():
-      if self.client.logout().SUCCESS:
-        if self.login:
-          self.login.destroy()
-          self.login = None
-        return True
-      else:
-        self.debug("Logout failed.")
-    return False
-  """
+    
   
   def doquit(self):
     if not self.client.avatar or self.doavatarquit():
@@ -139,6 +111,7 @@ class ClientUI:
       else:
         self.debug("Quit failed.")
     return False
+
 
   def start(self):
     self.root.mainloop()

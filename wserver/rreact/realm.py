@@ -1,30 +1,11 @@
-from wshared.control.response import *
-from wshared.notify.notification import *
+from wshared.control.response import Success
+from wshared.rcontrol.response import *
+from wshared.rnotify.notification import *
 
-from wserver.reactor import Reaction, REALM, INSTANCE
-
-
-class RQuit(Reaction):
-  DOMAIN = REALM
-  READONLY = False
-  def react(self):
-    if self.client.avatar:
-      return InvalidAction()
-    else:
-      self.client.control.send(Success())
-      return False
-
-    
-class RClaimNotify(Reaction):
-  DOMAIN = REALM
-  READONLY = False
-  def react(self):
-    self.client.notify = self.client.realm.claimnotify(self.action.key)
-    return Success() if self.client.notify else InvalidNotifyKey()
+from wserver.react.reaction import Reaction
 
 
 class RAvatarSelect(Reaction):
-  DOMAIN = REALM
   READONLY = False
   def react(self):
     if self.client.avatar:
@@ -42,7 +23,6 @@ class RAvatarSelect(Reaction):
 
 
 class RAvatarQuit(Reaction):
-  DOMAIN = REALM
   READONLY = False
   def react(self):
     if self.client.avatar:
@@ -54,7 +34,6 @@ class RAvatarQuit(Reaction):
 
 
 class RSendMessage(Reaction):
-  DOMAIN = REALM
   READONLY = True
   def react(self):
     if self.client.avatar:
