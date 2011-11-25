@@ -5,18 +5,10 @@ from socket import socket, AF_INET, SOCK_STREAM
 
 from wproto.stream import Stream
 
-from wshared.control.mapping import (ACTION_MAPPING as ACTION_BASE,
-                                     RESPONSE_MAPPING as RESPONSE_BASE)
-from wshared.control.action import *
-from wshared.control.response import *
-from wshared.rcontrol.mapping import ACTION_MAPPING, RESPONSE_MAPPING
-from wshared.rcontrol.action import *
-from wshared.rcontrol.response import *
-
-from wshared.notify.mapping import NOTIFY_MAPPING as NOTIFY_BASE
-from wshared.notify.notification import *
-from wshared.rnotify.mapping import NOTIFY_MAPPING
-from wshared.rnotify.notification import *
+from wshared.control.game import *
+from wshared.control.realm import *
+from wshared.notify.game import *
+from wshared.notify.realm import *
 
 def extend_map(m1, m2):
   new = m1.copy()
@@ -25,9 +17,9 @@ def extend_map(m1, m2):
 
 class CombatClient:
   def __init__(self):
-    self.control = Stream(send=extend_map(ACTION_BASE, ACTION_MAPPING),
-                          recv=extend_map(RESPONSE_BASE, RESPONSE_MAPPING))
-    self.notify = Stream(recv=extend_map(NOTIFY_BASE, NOTIFY_MAPPING))
+    self.control = Stream(send=extend_map(GAME_ACTION, REALM_ACTION),
+                          recv=extend_map(GAME_RESPONSE, REALM_RESPONSE))
+    self.notify = Stream(recv=extend_map(GAME_NOTIFY, REALM_NOTIFY))
     self.lcontrol = Lock()
     self.debugs = []
     self.nhook = self.ndebug

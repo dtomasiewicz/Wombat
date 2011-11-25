@@ -17,3 +17,32 @@ class ClaimNotify(Action):
 
 class Quit(Action):
   pass
+
+
+class Response(Message):
+  SUCCESS = False
+
+    
+class Success(Response):
+  SUCCESS = True
+
+
+class InvalidAction(Response):
+  pass
+
+
+class InvalidNotifyKey(Response):
+  pass
+
+
+GAME_ACTION = {
+  0: Quit,
+  1: ClaimNotify
+}
+
+
+GAME_RESPONSE = {
+  0: Success,
+  1: InvalidAction,
+  2: InvalidNotifyKey
+}

@@ -1,5 +1,5 @@
-from wshared.control.response import *
-from wshared.notify.notification import *
+from wshared.control.game import *
+from wshared.notify.game import *
 
 
 class Reaction:
@@ -40,4 +40,10 @@ class RClaimNotify(Reaction):
   def react(self):
     self.client.notify = self.client.realm.claimnotify(self.action.key)
     return Success() if self.client.notify else InvalidNotifyKey()
+
+
+GAME_REACTION = {
+  Quit: RQuit,
+  ClaimNotify: RClaimNotify
+}
 

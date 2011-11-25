@@ -5,6 +5,7 @@ from wproto.packutils import recvintus, recvstring, prepack
 class Notification(Message):
   pass
 
+
 class NotifyKey(Notification):
   def __init__(self, key):
     self.key = key
@@ -12,3 +13,8 @@ class NotifyKey(Notification):
     return prepack(self.key)
   def unpack(sock):
     return NotifyKey(recvintus(sock))
+
+
+GAME_NOTIFY = {
+  1: NotifyKey
+}

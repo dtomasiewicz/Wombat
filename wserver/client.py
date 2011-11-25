@@ -1,10 +1,5 @@
 class Client:
-  """
-  Handles all actions that a client machine can perform.
-  
-  Public threading:
-    must be acquired before mutation, invocation, and dependent accesses
-  """
+  """ Represents a single client application connected to the server. """
   
   def __init__(self, realm, control):
     self.realm = realm
@@ -17,7 +12,10 @@ class Client:
     return self.control.fileno()
   
   def identity(self):
-    """ Unique string identifying the client, composed of socket id and IP. """
+    """
+    String identifying the client. Unique at the moment it is returned, but
+    not guaranteed to be unique for the lifetime of the application.
+    """
     return "{0}".format(id(self))
   
   def debug(self, msg):

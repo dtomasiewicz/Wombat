@@ -1,8 +1,8 @@
-from wshared.control.response import Success
-from wshared.rcontrol.response import *
-from wshared.rnotify.notification import *
+from wshared.control.realm import *
+from wshared.control.game import Success
+from wshared.notify.realm import *
 
-from wserver.react.reaction import Reaction
+from wserver.react.game import Reaction
 
 
 class RAvatarSelect(Reaction):
@@ -46,3 +46,10 @@ class RSendMessage(Reaction):
         return Success()
     else:
       return InvalidAction()
+
+
+REALM_REACTION = {
+  AvatarSelect: RAvatarSelect,
+  AvatarQuit: RAvatarQuit,
+  SendMessage: RSendMessage
+}

@@ -1,6 +1,3 @@
-from wshared.control.response import Response
-
-
 class Reactor:
   def __init__(self, mapping={}):
     self.mapping = mapping

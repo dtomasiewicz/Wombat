@@ -1,16 +1,20 @@
+try:
+  from select import epoll as poll, EPOLLIN as POLLIN
+except:
+  # for non-linux, use standard python polling object
+  from select import poll, POLLIN
+  
 from socket import socket, AF_INET, SOCK_STREAM
-from select import epoll, EPOLLIN
 from threading import Thread, Lock
 from collections import deque
 from random import randrange
 
 from wproto.stream import Stream
-from wshared.control.mapping import ACTION_MAPPING, RESPONSE_MAPPING
-from wshared.notify.mapping import NOTIFY_MAPPING
-from wshared.notify.notification import NotifyKey
+from wshared.control.game import GAME_ACTION, GAME_RESPONSE
+from wshared.notify.game import GAME_NOTIFY, NotifyKey
 
 from wserver.reactor import Reactor
-from wserver.react.mapping import REACTION_MAPPING
+from wserver.react.game import GAME_REACTION
 from wserver.client import Client
 from wserver.event import Event
 
@@ -29,17 +33,17 @@ class GameServer:
   
   
   def __init__(self, action={}, response={}, notify={}, react={}):
-    self._action = extend_map(ACTION_MAPPING, action)
-    self._response = extend_map(RESPONSE_MAPPING, response)
-    self._notify = extend_map(NOTIFY_MAPPING, notify)
+    self._action = extend_map(GAME_ACTION, action)
+    self._response = extend_map(GAME_RESPONSE, response)
+    self._notify = extend_map(GAME_NOTIFY, notify)
     
-    self._reactor = Reactor(extend_map(REACTION_MAPPING, react))
+    self._reactor = Reactor(extend_map(GAME_REACTION, react))
     self._queue = deque()
     self._qlock = Lock()
     
     self._clisten = socket(AF_INET, SOCK_STREAM)
     self._nlisten = socket(AF_INET, SOCK_STREAM)
-    self._poll = epoll()
+    self._poll = poll()
     self._clients = set()
     self._idle = {} # map of idle clients by their fileno
     self._anotifys = {} # map of anonymous notify sockets by their claim key
@@ -65,8 +69,8 @@ class GameServer:
     self._nlisten.setblocking(0)
     self._nlisten.listen(backlog)
     
-    self._poll.register(self._clisten.fileno(), EPOLLIN)
-    self._poll.register(self._nlisten.fileno(), EPOLLIN)
+    self._poll.register(self._clisten.fileno(), POLLIN)
+    self._poll.register(self._nlisten.fileno(), POLLIN)
     
     while 1:
       waitfor = []
@@ -115,7 +119,7 @@ class GameServer:
   
   def idleclient(self, client):
     self._idle[client.fileno()] = client
-    self._poll.register(client.fileno(), EPOLLIN)
+    self._poll.register(client.fileno(), POLLIN)
   
   
   def addnotify(self, notify):
@@ -165,7 +169,7 @@ class GameServer:
   def _caccept(self):
     """ Connects a new client. """
     sock, (host, port) = self._clisten.accept()
-    self._poll.register(self._clisten, EPOLLIN)
+    self._poll.register(self._clisten, POLLIN)
     sock.setblocking(0)
     
     client = Client(self, Stream(recv=self._action, send=self._response,
@@ -181,7 +185,7 @@ class GameServer:
     client for this purpose.
     """
     sock, (host, port) = self._nlisten.accept()
-    self._poll.register(self._nlisten, EPOLLIN)
+    self._poll.register(self._nlisten, POLLIN)
     sock.setblocking(0)
     
     stream = Stream(send=self._notify, sock=sock, host=host, port=port)

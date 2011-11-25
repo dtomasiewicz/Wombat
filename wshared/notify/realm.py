@@ -1,7 +1,7 @@
 from wproto.message import Message
 from wproto.packutils import recvintus, recvstring, prepack
 
-from wshared.notify.notification import Notification
+from wshared.notify.game import Notification
 
 
 class RecvMessage(Notification):
@@ -16,3 +16,8 @@ class RecvMessage(Notification):
   
   def unpack(sock):
     return RecvMessage(recvstring(sock), recvstring(sock))
+
+
+REALM_NOTIFY = {
+  100: RecvMessage
+}

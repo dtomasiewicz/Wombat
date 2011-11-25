@@ -1,6 +1,6 @@
 from tkinter import *
 
-from wshared.rnotify.notification import RecvMessage
+from wshared.notify.realm import RecvMessage
 
 class ClientUI:
 
