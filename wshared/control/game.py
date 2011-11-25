@@ -1,5 +1,5 @@
 from wproto.message import Message
-from wproto.packutils import prepack, recvstring, recvintus
+from wproto.packutils import prepack, recvbytes
 
 
 class Action(Message):
@@ -7,12 +7,17 @@ class Action(Message):
 
 
 class ClaimNotify(Action):
+  """
+  IDENTIFIER   TYPE           TRANSPORT PACKING
+  key          bytes          32s
+    notify stream's randomized claim key
+  """
   def __init__(self, key):
     self.key = key
   def pack(self):
     return prepack(self.key)
   def unpack(sock):
-    return ClaimNotify(recvintus(sock))
+    return ClaimNotify(recvbytes(sock, 32))
 
 
 class Quit(Action):

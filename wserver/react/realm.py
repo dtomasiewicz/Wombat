@@ -2,10 +2,10 @@ from wshared.control.realm import *
 from wshared.control.game import Success
 from wshared.notify.realm import *
 
-from wserver.react.game import Reaction
+from wserver.reactor import Reaction
 
 
-class RAvatarSelect(Reaction):
+class RSelectAvatar(Reaction):
   READONLY = False
   def react(self):
     if self.client.avatar:
@@ -22,13 +22,22 @@ class RAvatarSelect(Reaction):
         return Success()
 
 
-class RAvatarQuit(Reaction):
+class RQuitAvatar(Reaction):
   READONLY = False
   def react(self):
     if self.client.avatar:
       self.client.avatar.client = None
       self.client.avatar = None
       return Success()
+    else:
+      return InvalidAction()
+
+
+class RGetInstance(Reaction):
+  READONLY = True
+  def react(self):
+    if self.client.avatar:
+      return InstanceInfo(*self.client.avatar.instanceinfo())
     else:
       return InvalidAction()
 
@@ -49,7 +58,8 @@ class RSendMessage(Reaction):
 
 
 REALM_REACTION = {
-  AvatarSelect: RAvatarSelect,
-  AvatarQuit: RAvatarQuit,
+  SelectAvatar: RSelectAvatar,
+  QuitAvatar: RQuitAvatar,
+  GetInstance: RGetInstance,
   SendMessage: RSendMessage
 }

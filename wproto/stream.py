@@ -3,7 +3,7 @@ from struct import pack, unpack
 from socket import socket, error, AF_INET, SOCK_STREAM
 
 from wproto.message import CodeError
-from wproto.packutils import recvintus
+from wproto.packutils import recvdata
 
 class Stream:
   """
@@ -50,7 +50,7 @@ class Stream:
     Constructs a Message from bytes read in through the socket, based on the
     receive mapping.
     """
-    op = recvintus(self._socket)
+    op = recvdata(self._socket, 'H')
     opclass = self.recvmap.get(op, None)
     if opclass:
       self.last_recv = time()

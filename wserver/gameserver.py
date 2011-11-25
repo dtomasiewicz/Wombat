@@ -4,12 +4,16 @@ except:
   # for non-linux, use standard python polling object
   from select import poll, POLLIN
   
-from socket import socket, AF_INET, SOCK_STREAM
+from os import urandom
+from socket import (socket, error as socketerror, AF_INET, SOCK_STREAM,
+                    SOL_SOCKET, SO_REUSEADDR)
 from threading import Thread, Lock
 from collections import deque
 from random import randrange
+from struct import error as structerror
 
 from wproto.stream import Stream
+from wproto.message import CodeError
 from wshared.control.game import GAME_ACTION, GAME_RESPONSE
 from wshared.notify.game import GAME_NOTIFY, NotifyKey
 
@@ -42,7 +46,12 @@ class GameServer:
     self._qlock = Lock()
     
     self._clisten = socket(AF_INET, SOCK_STREAM)
+    self._clisten.setblocking(0)
+    self._clisten.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     self._nlisten = socket(AF_INET, SOCK_STREAM)
+    self._nlisten.setblocking(0)
+    self._nlisten.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+    
     self._poll = poll()
     self._clients = set()
     self._idle = {} # map of idle clients by their fileno
@@ -61,12 +70,10 @@ class GameServer:
     
     # listens for incoming control connections
     self._clisten.bind((host, cport))
-    self._clisten.setblocking(0)
     self._clisten.listen(backlog)
     
     # listens for incoming notify connections
     self._nlisten.bind((host, nport))
-    self._nlisten.setblocking(0)
     self._nlisten.listen(backlog)
     
     self._poll.register(self._clisten.fileno(), POLLIN)
@@ -123,9 +130,12 @@ class GameServer:
   
   
   def addnotify(self, notify):
-    key = randrange(65535) # this will need to be better in the future
-    self._anotifys[key] = notify
-    notify.send(NotifyKey(key))
+    while 1:
+      key = urandom(32)
+      if not key in self._anotifys:
+        self._anotifys[key] = notify
+        notify.send(NotifyKey(key))
+        break
   
   
   def claimnotify(self, key):

@@ -39,10 +39,7 @@ class CombatClient:
     key = self.notify.recv()
     if isinstance(key, NotifyKey):
       with self.lcontrol:
-        try:
-          res = self.control.sendrecv(ClaimNotify(key.key))
-        except:
-          return
+        res = self.control.sendrecv(ClaimNotify(key.key))
       if res.SUCCESS:
         while 1:
           self.nhook(self.notify.recv())
@@ -59,7 +56,7 @@ class CombatClient:
   
   def avatarselect(self, avatar):
     with self.lcontrol:
-      res = self.control.sendrecv(AvatarSelect(avatar))
+      res = self.control.sendrecv(SelectAvatar(avatar))
       if res.SUCCESS:
         self.avatar = avatar
         self.debug("Avatar selected: {0}".format(avatar))
@@ -71,7 +68,7 @@ class CombatClient:
   
   def avatarquit(self):
     with self.lcontrol:
-      res = self.control.sendrecv(AvatarQuit())
+      res = self.control.sendrecv(QuitAvatar())
       if res.SUCCESS:
         self.avatar = None
         self.debug("Avatar quit success.")
