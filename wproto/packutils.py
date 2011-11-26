@@ -61,7 +61,7 @@ def prepack(*args, intfmt='i', strenc='UTF-8', strlenfmt='H'):
       data[0] += '{0}s'.format(bl)
       data.append(d)
     elif t == tuple:
-      fmt, x = data
+      fmt, x = d
       data[0] += fmt
       data.append(x)
     else:

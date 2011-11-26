@@ -30,4 +30,12 @@ class RealmServer(GameServer):
       if a:
         self._avatars[name] = a
     return self._avatars.get(name, None)
-
+  
+  
+  def worldlookup(self, worldid):
+    """
+    Determines the address and port of a world server given a world id. This 
+    method is a stub, which will obviously need to do more later-- perhaps
+    query a central master world server.
+    """
+    return (self.host, self.cport+2, self.nport+2)

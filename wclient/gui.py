@@ -38,20 +38,20 @@ class ClientUI:
       print(s)
 
   
-  def showavatarselect(self):
-    self.avatarselect = Frame(self.root)
-    self.avatar = Entry(self.avatarselect)
-    self.avatar.bind("<Return>", self.doavatarselect)
+  def showselectavatar(self):
+    self.selectavatar = Frame(self.root)
+    self.avatar = Entry(self.selectavatar)
+    self.avatar.bind("<Return>", self.doselectavatar)
     self.avatar.focus_set()
     
-    self.avatarselect.grid(row=1)
-    Label(self.avatarselect, text="Avatar").grid(row=0, column=0)
+    self.selectavatar.grid(row=1)
+    Label(self.selectavatar, text="Avatar").grid(row=0, column=0)
     self.avatar.grid(row=0, column=1)
 
   
-  def doavatarselect(self, event):
-    if self.client.avatarselect(self.avatar.get()).SUCCESS:
-      self.avatarselect.destroy()
+  def doselectavatar(self, event):
+    if self.client.selectavatar(self.avatar.get()).SUCCESS:
+      self.selectavatar.destroy()
       self.showavatarui()
     else:
       self.debug("AvatarSelect failed.")
@@ -92,8 +92,8 @@ class ClientUI:
       self.debug("SendMessage failed.")
 
   
-  def doavatarquit(self):
-    if self.client.avatarquit().SUCCESS:
+  def doquitavatar(self):
+    if self.client.quitavatar().SUCCESS:
       if self.avatarui:
         self.avatarui.destroy()
         self.avatarui = None
@@ -104,7 +104,7 @@ class ClientUI:
     
   
   def doquit(self):
-    if not self.client.avatar or self.doavatarquit():
+    if not self.client.avatar or self.doquitavatar():
       if self.client.quit().SUCCESS:
         self.root.quit()
         return True

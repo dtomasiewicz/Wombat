@@ -7,7 +7,7 @@ from wserver.reactor import Reaction
 class RQuit(Reaction):
   READONLY = False
   def react(self):
-    if self.client.avatar:
+    if self.client.avatar or self.client.unit:
       return InvalidAction()
     else:
       self.client.control.send(Success())

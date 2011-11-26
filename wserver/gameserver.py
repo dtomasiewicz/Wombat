@@ -11,6 +11,7 @@ from threading import Thread, Lock
 from collections import deque
 from random import randrange
 from struct import error as structerror
+from errno import errorcode
 
 from wproto.stream import Stream
 from wproto.message import CodeError

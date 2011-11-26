@@ -50,13 +50,13 @@ Structure:
      and appends it to _queue
  - when all threads finish, the queue is processed in-order by the main thread
 
-Data Realms:
+Data domains:
 
 Global
  - Account
 
-Server
+Realm
  - Avatar
 
-Instance
+World
  - Unit

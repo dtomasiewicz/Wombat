@@ -2,20 +2,24 @@ from cmd import Cmd
 from argparse import ArgumentParser
 from shlex import split
 
+from wclient.worldclient import WorldClient
+
+
 class ClientShell(Cmd):
   prompt = ">>> "
   
-  def __init__(self, client):
+  def __init__(self, rclient):
     super().__init__()
-    self.client = client
+    self.rclient = rclient
+    self.wclient = None
   
   def do_EOF(self, line):
     print("")
-    if self.client.quit().SUCCESS:
+    if self.rclient.quit().SUCCESS:
       return True
   
   def precmd(self, line):
-    if len(self.client.debugs):
+    if len(self.rclient.debugs) or (self.wclient and len(self.wclient.debugs)):
       print("=== NEW NOTIFICATIONS SINCE PREVIOUS COMMAND ===")
       self.dumpdebug()
       print("================================================")
@@ -29,46 +33,50 @@ class ClientShell(Cmd):
     pass
     
   def dumpdebug(self):
-    while len(self.client.debugs):
-      print(self.client.debugs.pop(0))
+    while len(self.rclient.debugs):
+      print(self.rclient.debugs.pop(0))
+    if self.wclient:
+      while len(self.wclient.debugs):
+        print(self.wclient.debugs.pop(0))
   
-  def do_avatarselect(self, line):
+  def do_selectavatar(self, line):
     parser = ArgumentParser(description="Choose your avatar!")
     parser.add_argument('avatar')
     try:
       args = parser.parse_args(split(line))
-      self.client.avatarselect(args.avatar)
+      if self.rclient.selectavatar(args.avatar).SUCCESS:
+        wi = self.rclient.getworldinfo()
+        if wi.SUCCESS:
+          self.wclient = WorldClient()
+          self.wclient.start(wi.addr, wi.cport, wi.nport)
+          self.wclient.selectunit(wi.unitid, wi.unitkey)
     except SystemExit:
       pass
   
-  def do_as(self, line):
-    return self.do_avatarselect(line)
+  do_sa = do_selectavatar
   
-  def do_avatarquit(self, line):
-    self.client.avatarquit()
+  def do_quitavatar(self, line):
+    self.rclient.quitavatar()
   
-  def do_aq(self, line):
-    return self.do_avatarquit(line)
+  do_qa = do_quitavatar
   
   def do_quit(self, line):
-    if self.client.quit().SUCCESS:
-      return True
+    if not self.wclient or self.wclient.quit().SUCCESS:
+      if self.rclient.quit().SUCCESS:
+        return True
+    return False
   
-  def do_q(self, line):
-    return self.do_quit(line)
+  do_exit = do_q = do_quit
   
-  def do_exit(self, line):
-    return self.do_quit(line)
-
   def do_msg(self, line):
     parser = ArgumentParser(description="Send a message to another avatar.")
     parser.add_argument('avatar')
     parser.add_argument('message')
     try:
       args = parser.parse_args(split(line))
-      self.client.sendmessage(args.avatar, args.message)
+      self.rclient.sendmessage(args.avatar, args.message)
     except SystemExit:
       pass
+      
+  do_m = do_msg
   
-  def do_m(self, line):
-    return self.do_msg(line)

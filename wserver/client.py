@@ -4,9 +4,10 @@ class Client:
   def __init__(self, realm, control):
     self.realm = realm
     self.control = control
-    self.instance = None
+    self.world = None
     self.notify = None
     self.avatar = None
+    self.unit = None
   
   def fileno(self):
     return self.control.fileno()
