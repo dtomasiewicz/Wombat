@@ -2,13 +2,13 @@ class Reactor:
   def __init__(self, mapping={}):
     self.mapping = mapping
   
-  def register(self, actioncls, reactcls):
-    self.mapping[actioncls] = reactcls
+  def register(self, action, reaction):
+    self.mapping[action] = reaction
   
   def dispatch(self, client, action):
-    reactcls = self.mapping.get(action.__class__)
-    if reactcls:
-      return reactcls(client, action)
+    reaction = self.mapping.get(action.alias)
+    if reaction:
+      return reaction(client, action)
     else:
       raise Exception("No reactor registered for {0}".format(action.__class__))
 

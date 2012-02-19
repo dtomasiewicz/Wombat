@@ -1,25 +1,21 @@
-from wshared.control.realm import *
-from wshared.control.game import Success, InvalidAction
-from wshared.notify.realm import *
-
 from wserver.reactor import Reaction
-
+from wproto.message import Message
 
 class RSelectAvatar(Reaction):
   READONLY = False
   def react(self):
     if self.client.avatar:
-      return InvalidAction()
+      return Message('InvalidAction')
     else:
-      a = self.client.realm.avatar(self.action.avatar)
+      a = self.client.realm.avatar(self.action.get('avatar'))
       if not a:
-        return InvalidAvatar(self.action.avatar)
+        return Message('InvalidAvatar', avatar=self.action.get('avatar'))
       elif a.client:
-        return AvatarInUse()
+        return Message('AvatarInUse')
       else:
         self.client.avatar = a
         a.client = self.client
-        return Success()
+        return Message('Success')
 
 
 class RQuitAvatar(Reaction):
@@ -28,9 +24,9 @@ class RQuitAvatar(Reaction):
     if self.client.avatar:
       self.client.avatar.client = None
       self.client.avatar = None
-      return Success()
+      return Message('Success')
     else:
-      return InvalidAction()
+      return Message('InvalidAction')
 
 
 class RGetWorldInfo(Reaction):
@@ -60,8 +56,8 @@ class RSendMessage(Reaction):
 
 
 REALM_REACTION = {
-  SelectAvatar: RSelectAvatar,
-  QuitAvatar: RQuitAvatar,
-  GetWorldInfo: RGetWorldInfo,
-  SendMessage: RSendMessage
+  'SelectAvatar': RSelectAvatar,
+  'QuitAvatar': RQuitAvatar,
+  'GetWorldInfo': RGetWorldInfo,
+  'SendMessage': RSendMessage
 }

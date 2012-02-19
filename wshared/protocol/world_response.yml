@@ -1,0 +1,9 @@
+---
+100:
+  alias: InvalidUnit
+  fields:
+    - unitid int
+
+101: InvalidKey
+
+102: UnitInUse

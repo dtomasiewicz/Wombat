@@ -1,0 +1,18 @@
+---
+100:
+  alias: InvalidAvatar
+  fields:
+    - avatar sstr
+101:
+  alias: AvatarInUse
+  fields:
+    - avatar sstr
+102:
+  alias: WorldInfo
+  fields:
+    - addr bytes(4)
+    - cport short
+    - nport short
+    - worldid int
+    - unitid int
+    - unitkey bytes(32)

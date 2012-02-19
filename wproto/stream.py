@@ -10,10 +10,9 @@ class Stream:
   Wraps a connected socket for transmission translation as specified by send
   and receive protol descriptions.
   """
-  def __init__(self, send={}, recv={}, sock=None, host=None, port=None):
-    # send map is inverted for class->opcode translation
-    self.sendmap = dict((c,o) for o,c in send.items())
-    self.recvmap = recv
+  def __init__(self, sendmap, recvmap, sock=None, host=None, port=None):
+    self.sendmap = sendmap
+    self.recvmap = recvmap
     
     if sock:
       self._socket = sock
@@ -39,29 +38,23 @@ class Stream:
     """
     Translates a Message into bytes based on the send mapping and sends these 
     bytes over the socket.
+    TODO: rewrite this for new type/map system
     """
-    fmt, *data = message.pack() if message.pack else ['']
-    packed = pack('!H'+fmt, self.sendmap[message.__class__], *data)
-    self.last_send = time()
-    return self._socket.send(packed)
+    self.sendmap.send(message)
   
   def recv(self):
     """
     Constructs a Message from bytes read in through the socket, based on the
     receive mapping.
+    TODO: rewrite this for new type/map system
     """
-    op = recvdata(self._socket, 'H')
-    opclass = self.recvmap.get(op, None)
-    if opclass:
-      self.last_recv = time()
-      return opclass.unpack(self._socket) if opclass.unpack else opclass()
-    else:
-      raise CodeError(op)
+    return self.recvmap.recv(self._socket)
   
   def sendrecv(self, message):
     """
     Both sends a Message and receives a response Message, which is
     returned.
+    TODO: rewrite this for new type/map system
     """
     self.send(message)
     return self.recv()

@@ -1,0 +1,6 @@
+---
+100:
+  alias: SelectUnit
+  fields:
+    - unitid int
+    - key bytes 32

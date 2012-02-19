@@ -1,0 +1,193 @@
+== INTEGERS ==
+
+int (standard size integer)
+  4 bytes
+  signed - whether or not the value is signed; default False
+  
+short (short integer)
+  2 bytes
+  signed - see int
+  
+long (long integer)
+  8 bytes
+  signed - see int
+
+== BYTES / UNENCODED STRINGS ==
+
+bytes (fixed length byte sequence)
+  length - length of byte sequence; required
+
+== ENCODED STRINGS ==
+
+str (fixed length string)
+  length - string byte-length, given in bytes; required
+  encoding - encoding type; default ASCII
+
+=== VARIABLE-LENGTH STRINGS ===
+
+Variable-length strings consist of a fixed-size integer n indicating the
+byte length of the string, followed by n bytes representing the string
+itself.
+
+sstr (short-length string)
+  maximum byte-length is 2^16 - 1
+  encoding - encoding type; default UTF-8
+
+istr (int-length string)
+  maximum byte-length is 2^32 - 1
+  encoding - see sstr
+
+lstr (long-length string)
+  maximum byte-length is 2^64 - 1
+  encoding - see sstr
+
+== COLLECTIONS ==
+
+list (fixed length collection)
+  length - number of items in collection; required
+  etype - tuple of (pack, unpack) methods for dealing with each list element
+
+=== VARIABLE-LENGTH COLLECTIONS ===
+
+Variable-length collections consist of a fixed-size integer n indicating
+the number of items in the collection, followed by n items of the 
+collection type.
+
+slist (short-length list)
+  maximum number of items is 2^16
+  
+ilist (int-length list)
+  maximum number of items is 2^32
+
+llist (long-length list)
+  maximum number of items is 2^64
+
+
+== DEFINING CUSTOM TYPES ==
+
+A "type" is implemented as a pair of functions that define how a chunk 
+of data is packed/unpacked into/from a socket.
+
+The packing method takes a data value as an argument and transforms it 
+into a tuple where:
+  - the first value is the pack format string (no prefixes allowed)
+  - the rest of the values are able to be packed with struct.pack() and
+    the given format string
+
+The unpacking method takes a socket object and creates a pythonic rep-
+resentation of the data by (optionally) reading data from the socket.
+When unpacking data directly from the socket, sock_unpack should be 
+used (and thus no prefixes should be present on the format string).
+
+EXAMPLE:
+
+  def pack_ip4(data, cfg):
+    return ('4s', bytes(inet_aton(data), 'ASCII'))
+    
+  def unpack_ip4(socket, cfg):
+    return inet_ntoa(sock_unpack('4s', socket))
+
+  mapping.register_type('ip4', pack_ip4, unpack_ip4)
+
+This would allow the client and server apps to treat a message's "ip4"-
+typed data as a dotted-quad IPv4 address string, while still sending it 
+over the network as a 4-byte addr_in.
+
+== PROTOCOL DEFINITIONS ==
+
+Define a base message type. e.g., message.yml:
+
+  Message:
+    - op short
+
+Then define specific message structures. e.g. action.yml
+
+  extend: message.Message
+  Login:
+    - op = 1
+    - username sstr
+    - password sstr
+  
+To construct a protocol:
+  recv = Protocol('path/to/action.yml')
+    defn = yaml.load(readfile('path/to/action.yml'))
+    if defn['extend']
+      base = Protocol('path/to/message.yml').defs['Message']
+      find attrs in common where parent defines type, sub defines
+       concrete. these are the key attributes (used to determine the
+       message subtype when receiving, and enforced when sending). with
+       n key attributes, an n-dimensional dict is used to map a set of
+       key values to a message type.
+  send = Protocol('path/to/response.yml')
+  stream = Stream(send, recv)
+  methods:
+    stream.send('AvatarNoExists', {'avatar':'Foo'})
+      --> m = stream.send.pack('AvatarNoExists', {'avatar':'Foo'})
+          (m is now a bytes object that can be sent over a socket)
+          stream.socket.send(m)
+    stream.recv()
+      --> m = stream.recv.unpack(stream.socket)
+
+In general...
+  Serial (could use a better name, as protocol is more than just the 
+            message structures. also includes both send and recv defns)
+    - constructed with a normalized protocol definition
+    - stores type implementations
+    - handles packing and unpacking of protocol messages
+  Stream
+    - constructed with full send and receive protocols
+    - optionally constructed with an open socket; otherwise a new socket
+      will be opened
+    - handles sending and receiving of packed protocol messages
+  messages
+    - maybe just a 2-tuple of (string type, dict data) ?
+    - messages do NOT handle packing, since info like data ordering is
+      not stored in them and they do not have access to the protocol or
+      socket
+
+# desired structure
+Mapping {
+  # all message types
+  codetype: short,
+  messages: {
+    101(type-parsed): {
+      alias: 100 (this is type-converted)
+      fields: [
+        {name: avatar, type: sstr}
+      ]
+    }
+  },
+  namemap: {
+    "SelectAvatar": 101(type-parsed)
+  }
+}
+
+# definition style (ideal, requires custom parser)
+"TypeAlias" code:
+  field1 type1
+  field2 type2(length2)
+    opt1=val1 opt2=val2
+
+# for now... YAML
+<code>: <alias>
+
+OR
+
+<code>
+  alias: <alias>
+  fields:
+    - <name1> <type1> <length1>
+    - <name2> <type2> <length2>
+
+OR
+
+<code>:
+  alias: <alias>
+  fields:
+    - name1 type1 length1
+    - name: <field2>
+      type: <type2>
+      opts:
+        length: <length2>
+        opt1: <val1>
+        opt2: <val2>

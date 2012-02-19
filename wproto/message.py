@@ -1,12 +1,11 @@
 class Message:
-  """ Generic stream message. Does not carry any data. """
-  pack = None
-  unpack = None
+  def __init__(self, alias, data={}, **kwargs):
+    self.alias = alias
+    self.data = data.copy()
+    self.data.update(kwargs)
+  
+  def get(field):
+    return self.data[field] if field in self.data else None
   
   def __str__(self):
-    return self.__class__.__name__
-
-
-class CodeError(Exception):
-  def __init__(self, code):
-    self.code = code
+    return self.alias

@@ -15,19 +15,12 @@ from errno import errorcode
 
 from wproto.stream import Stream
 from wproto.message import CodeError
-from wshared.control.game import GAME_ACTION, GAME_RESPONSE
-from wshared.notify.game import GAME_NOTIFY, NotifyKey
+from wshared.protocol import mapping
 
 from wserver.reactor import Reactor
 from wserver.react.game import GAME_REACTION
 from wserver.client import Client
 from wserver.event import Event
-
-
-def extend_map(m1, m2):
-  new = m1.copy()
-  new.update(m2)
-  return new
 
 
 class GameServer:
@@ -36,13 +29,19 @@ class GameServer:
   clients, and receives instructions from clients.
   """
   
-  
   def __init__(self, action={}, response={}, notify={}, react={}):
-    self._action = extend_map(GAME_ACTION, action)
-    self._response = extend_map(GAME_RESPONSE, response)
-    self._notify = extend_map(GAME_NOTIFY, notify)
+    self._action = mapping('game_action')
+    self._action.extend(mapping(action))
     
-    self._reactor = Reactor(extend_map(GAME_REACTION, react))
+    self._response = mapping('game_response')
+    self._response.extend(mapping(response))
+    
+    self._notify = mapping('game_notify')
+    self._notify.extend(mapping(notify))
+    
+    rmap = GAME_REACTION.copy()
+    rmap.update(react)
+    self._reactor = Reactor(rmap)
     self._queue = deque()
     self._qlock = Lock()
     
@@ -135,7 +134,7 @@ class GameServer:
       key = urandom(32)
       if not key in self._anotifys:
         self._anotifys[key] = notify
-        notify.send(NotifyKey(key))
+        notify.send(Message('NotifyKey', key=key))
         break
   
   

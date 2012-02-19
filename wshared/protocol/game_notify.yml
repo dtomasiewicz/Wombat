@@ -1,0 +1,5 @@
+---
+0:
+  alias: NotifyKey
+  fields:
+    - key bytes 32

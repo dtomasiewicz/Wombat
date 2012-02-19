@@ -1,28 +1,25 @@
-from wshared.control.world import *
-from wshared.control.game import Success, InvalidAction
-
+from wproto.message import Message
 from wserver.reactor import Reaction
-
 
 class RSelectUnit(Reaction):
   READONLY = False
   def react(self):
     if self.client.unit:
-      return InvalidAction()
+      return Message('InvalidAction')
     else:
-      u = self.client.realm.unit(self.action.unitid)
+      u = self.client.realm.unit(self.action.get('unitid'))
       if not u:
-        return InvalidUnit(self.action.unitid)
+        return Message('InvalidUnit', unitid=self.action.get('unitid'))
       elif u.client:
-        return UnitInUse()
+        return Message('UnitInUse')
       elif u.key != self.action.key:
-        return InvalidKey()
+        return Message('InvalidKey')
       else:
         self.client.unit = u
         u.client = self.client
-        return Success()
+        return Message('Success')
 
 
 WORLD_REACTION = {
-  SelectUnit: RSelectUnit
+  'SelectUnit': RSelectUnit
 }

@@ -1,5 +1,4 @@
-from wshared.control.realm import REALM_ACTION, REALM_RESPONSE
-from wshared.notify.realm import REALM_NOTIFY
+from wshared.protocol import mapping
 
 from wserver.gameserver import GameServer
 from wserver.react.realm import REALM_REACTION
@@ -10,8 +9,8 @@ class RealmServer(GameServer):
   
   
   def __init__(self, data):
-    super().__init__(REALM_ACTION, REALM_RESPONSE, REALM_NOTIFY,
-                     REALM_REACTION)
+    super().__init__(mapping('realm_action'), mapping('realm_response'),
+                     mapping('realm_notify'), REALM_REACTION)
     self._data = data
     self._avatars = {}
   

@@ -1,5 +1,4 @@
-from wshared.control.world import WORLD_ACTION, WORLD_RESPONSE
-from wshared.notify.world import WORLD_NOTIFY
+from wshared.protocol import mapping
 
 from wserver.gameserver import GameServer
 from wserver.react.world import WORLD_REACTION
@@ -10,7 +9,8 @@ class WorldServer(GameServer):
   
   
   def __init__(self, data):
-    super().__init__(WORLD_ACTION, WORLD_RESPONSE, WORLD_NOTIFY, WORLD_REACTION)
+    super().__init__(mapping('world_action'), mapping('world_response'),
+                     mapping('world_notify'), WORLD_REACTION)
     self._data = data
     self._units = {}
   
