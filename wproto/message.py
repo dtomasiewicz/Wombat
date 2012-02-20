@@ -4,8 +4,8 @@ class Message:
     self.data = data.copy()
     self.data.update(kwargs)
   
-  def get(field):
+  def get(self, field):
     return self.data[field] if field in self.data else None
   
   def __str__(self):
-    return self.alias
+    return self.alias+" "+str(self.data)

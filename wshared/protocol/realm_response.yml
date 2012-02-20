@@ -10,9 +10,9 @@
 102:
   alias: WorldInfo
   fields:
-    - addr bytes(4)
+    - addr ipv4
     - cport short
     - nport short
     - worldid int
     - unitid int
-    - unitkey bytes(32)
+    - unitkey bytes 32

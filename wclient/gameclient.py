@@ -1,24 +1,28 @@
 from threading import Thread, Lock
 
 from wproto.stream import Stream
-
-from wshared.control.game import *
-from wshared.notify.game import *
-
-
-def extend_map(m1, m2):
-  new = m1.copy()
-  new.update(m2)
-  return new
+from wproto.message import Message
+from wshared.protocol import mapping
 
 
 class GameClient:
   
   
-  def __init__(self, action={}, response={}, notify={}):
-    self.control = Stream(send=extend_map(GAME_ACTION, action),
-                          recv=extend_map(GAME_RESPONSE, response))
-    self.notify = Stream(recv=extend_map(GAME_NOTIFY, notify))
+  def __init__(self, action=None, response=None, notify=None):
+    actmap = mapping('game_action')
+    if action:
+      actmap.extend(action)
+    
+    resmap = mapping('game_response')
+    if response:
+      resmap.extend(response)
+    
+    notmap = mapping('game_notify')
+    if notify:
+      notmap.extend(notify)
+    
+    self.control = Stream(send=actmap, recv=resmap)
+    self.notify = Stream(recv=notmap)
     self.controllock = Lock()
     self.debugs = []
     self.nhook = self.ndebug
@@ -38,10 +42,10 @@ class GameClient:
   def nstart(self, host, port):
     self.notify.connect(host, port)
     key = self.notify.recv()
-    if isinstance(key, NotifyKey):
+    if key.alias == 'NotifyKey':
       with self.controllock:
-        res = self.control.sendrecv(ClaimNotify(key.key))
-      if res.SUCCESS:
+        res = self.control.sendrecv(Message('ClaimNotify', key=key.get('key')))
+      if res.alias == 'Success':
         while 1:
           self.nhook(self.notify.recv())
       else:
@@ -56,8 +60,8 @@ class GameClient:
     
   def quit(self):
     with self.controllock:
-      res = self.control.sendrecv(Quit())
-      if res.SUCCESS:
+      res = self.control.sendrecv(Message('Quit'))
+      if res.alias == 'Success':
         self.debug("Quit success.")
       else:
         self.debug("Quit failure.")

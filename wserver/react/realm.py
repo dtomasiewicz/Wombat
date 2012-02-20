@@ -35,24 +35,25 @@ class RGetWorldInfo(Reaction):
     if self.client.avatar:
       worldid, unitid, unitkey = self.client.avatar.worldinfo()
       addr, cport, nport = self.client.realm.worldlookup(worldid)
-      return WorldInfo(addr, cport, nport, worldid, unitid, unitkey)
+      return Message('WorldInfo', addr=addr, cport=cport, nport=nport,
+                    worldid=worldid, unitid=unitid, unitkey=unitkey)
     else:
-      return InvalidAction()
+      return Message('InvalidAction')
 
 
 class RSendMessage(Reaction):
   READONLY = True
   def react(self):
     if self.client.avatar:
-      tar = self.client.realm.avatar(self.action.avatar)
+      tar = self.client.realm.avatar(self.action.get('avatar'))
       if not tar or not tar.client or not tar.client.notify:
-        return InvalidAvatar(self.action.avatar)
+        return Message('InvalidAvatar', avatar=self.action.get('avatar'))
       else:
-        tar.client.notify.send(
-            RecvMessage(self.client.avatar.name, self.action.message))
-        return Success()
+        tar.client.notify.send(Message('RecvMessage', avatar=self.client.avatar.name,
+                                       message=self.action.get('message')))
+        return Message('Success')
     else:
-      return InvalidAction()
+      return Message('InvalidAction')
 
 
 REALM_REACTION = {

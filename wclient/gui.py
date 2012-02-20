@@ -1,6 +1,6 @@
 from tkinter import *
 
-from wshared.notify.realm import RecvMessage
+from wproto.message import Message
 
 class ClientUI:
 
@@ -12,7 +12,7 @@ class ClientUI:
     self.root.protocol("WM_DELETE_WINDOW", self.doquit)
     self.tdebug = Text(self.root, width=70, height=1, state=DISABLED)
     self.tdebug.grid(row=0)
-    self.showavatarselect()
+    self.showselectavatar()
 
   
   def debug(self, item):
@@ -23,11 +23,11 @@ class ClientUI:
 
   
   def nhandle(self, n):
-    if isinstance(n, RecvMessage):
-      s = "[{0}]: {1}\n".format(n.avatar, n.message)
+    if n.alias == 'RecvMessage':
+      s = "[{0}]: {1}\n".format(n.get('avatar'), n.get('message'))
       tar = self.chats
     else:
-      s = n.__str__()
+      s = str(n)
       tar = self.notifs
     
     if tar:
@@ -50,7 +50,7 @@ class ClientUI:
 
   
   def doselectavatar(self, event):
-    if self.client.selectavatar(self.avatar.get()).SUCCESS:
+    if self.client.selectavatar(self.avatar.get()).alias == 'Success':
       self.selectavatar.destroy()
       self.showavatarui()
     else:
@@ -83,7 +83,7 @@ class ClientUI:
   def dochat(self, event):
     avatar = self.mrecip.get()
     message = self.message.get()
-    if self.client.sendmessage(avatar, message).SUCCESS:
+    if self.client.sendmessage(avatar, message).alias == 'Success':
       self.message.delete(0, END)
       self.chats.config(state=NORMAL)
       self.chats.insert(END, "To [{0}]: {1}\n".format(avatar, message))
@@ -93,7 +93,7 @@ class ClientUI:
 
   
   def doquitavatar(self):
-    if self.client.quitavatar().SUCCESS:
+    if self.client.quitavatar().alias == 'Success':
       if self.avatarui:
         self.avatarui.destroy()
         self.avatarui = None
@@ -105,7 +105,7 @@ class ClientUI:
   
   def doquit(self):
     if not self.client.avatar or self.doquitavatar():
-      if self.client.quit().SUCCESS:
+      if self.client.quit().alias == 'Success':
         self.root.quit()
         return True
       else:

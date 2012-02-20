@@ -1,18 +1,15 @@
 from time import time
-from struct import pack, unpack
+from struct import pack
 from socket import socket, error, AF_INET, SOCK_STREAM
-
-from wproto.message import CodeError
-from wproto.packutils import recvdata
 
 class Stream:
   """
   Wraps a connected socket for transmission translation as specified by send
   and receive protol descriptions.
   """
-  def __init__(self, sendmap, recvmap, sock=None, host=None, port=None):
-    self.sendmap = sendmap
-    self.recvmap = recvmap
+  def __init__(self, send=None, recv=None, sock=None, host=None, port=None):
+    self.sendmap = send
+    self.recvmap = recv
     
     if sock:
       self._socket = sock
@@ -38,17 +35,17 @@ class Stream:
     """
     Translates a Message into bytes based on the send mapping and sends these 
     bytes over the socket.
-    TODO: rewrite this for new type/map system
     """
-    self.sendmap.send(message)
+    packed = self.sendmap.pack(message)
+    self._socket.send(pack('!'+packed[0], *packed[1:]))
+    
   
   def recv(self):
     """
     Constructs a Message from bytes read in through the socket, based on the
     receive mapping.
-    TODO: rewrite this for new type/map system
     """
-    return self.recvmap.recv(self._socket)
+    return self.recvmap.unpack(self._socket)
   
   def sendrecv(self, message):
     """

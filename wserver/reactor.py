@@ -24,6 +24,7 @@ class Reaction:
   def process(self):
     res = self.react()
     if res:
+      print(str(res))
       self.client.debug("{0} => {1}".format(self.action, res))
       self.client.control.send(res)
       #if len(select([client], [], [], 0)[0]) == 1:

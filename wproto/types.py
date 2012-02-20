@@ -1,4 +1,6 @@
-from packutils import sock_unpack, mergepacks
+from socket import inet_ntoa, inet_aton
+
+from wproto.packutils import sock_unpack, mergepacks
 
 # 32-bit integer
 def pack_int(data, cfg):
@@ -30,13 +32,13 @@ def unpack_long(socket, cfg):
 # bytestring
 def pack_bytes(data, cfg):
   if 'length' in cfg:
-    return (cfg['length']+'s', data)
+    return (str(cfg['length'])+'s', data)
   else:
     raise Exception('<bytes> field must have a configured length')
 
 def unpack_bytes(socket, cfg):
   if 'length' in cfg:
-    return sock_unpack(cfg['length']+'s', socket)[0]
+    return sock_unpack(str(cfg['length'])+'s', socket)[0]
   else:
     raise Exception('<bytes> field must have a configured length')
 
@@ -44,14 +46,14 @@ def unpack_bytes(socket, cfg):
 def pack_str(data, cfg):
   if 'length' in cfg:
     enc = cfg['encoding'] if 'encoding' in cfg else 'ASCII'
-    return (cfg['length']+'s', bytes(data, enc))
+    return (str(cfg['length'])+'s', bytes(data, enc))
   else:
     raise Exception('<bytes> field must have a configured length')
 
 def unpack_str(socket, cfg):
   if 'length' in cfg:
     enc = cfg['encoding'] if 'encoding' in cfg else 'ASCII'
-    return sock_unpack(cfg['length']+'s', socket)[0].decode(enc)
+    return sock_unpack(str(cfg['length'])+'s', socket)[0].decode(enc)
   else:
     raise Exception('<bytes> field must have a configured length')
 
@@ -181,6 +183,13 @@ def unpack_llist(data, cfg):
   lcfg['nformat'] = 'l';
   return unpack_nlist(data, lcfg)
 
+# IPv4 address
+def pack_ipv4(data, cfg):
+  return ('4s', inet_aton(data))
+  
+def unpack_ipv4(socket, cfg):
+  return inet_ntoa(sock_unpack('4s', socket)[0])
+
 
 BASE_TYPES = {
   'int': (pack_int, unpack_int),
@@ -196,5 +205,6 @@ BASE_TYPES = {
   'nlist': (pack_list, unpack_list),
   'ilist': (pack_list, unpack_list),
   'slist': (pack_list, unpack_list),
-  'llist': (pack_list, unpack_list)
+  'llist': (pack_list, unpack_list),
+  'ipv4': (pack_ipv4, unpack_ipv4)
 }

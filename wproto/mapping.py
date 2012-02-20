@@ -1,6 +1,7 @@
 from copy import deepcopy
 from wproto.types import BASE_TYPES, unpack_short, pack_short
 from wproto.packutils import mergepacks
+from wproto.message import Message
 
 class Mapping:
   def __init__(self, defs, types = BASE_TYPES):
@@ -30,7 +31,7 @@ class Mapping:
     op = self.code(message.alias)
     if op in self.defs:
       pack = pack_short(op, {})
-      for field in self.defs[op].fields:
+      for field in self.defs[op]['fields']:
         packfn = self.types[field['type']][0]
         pack = mergepacks(pack, packfn(message.get(field['name']), field['cfg']))
       return pack
@@ -41,7 +42,7 @@ class Mapping:
     op = unpack_short(socket, {})
     if op in self.defs:
       data = {}
-      for field in self.defs[op].fields:
+      for field in self.defs[op]['fields']:
         unpackfn = self.types[field['type']][1]
         data[field['name']] = unpackfn(socket, field['cfg'])
       return Message(self.alias(op), data)
@@ -68,9 +69,10 @@ def normalize(defs):
             cfg = field['cfg'] if 'cfg' in field else {}
             norm[code]['fields'].append({'name': name, 'type': type, 'cfg': cfg})
           else:
-            name, type, length = field.split(' ')
+            name, type, *rest = field.split(' ')
+            cfg = {'length': int(rest[0])} if len(rest) else {}
             norm[code]['fields'].append({
-              'name': name, 'type': type, 'cfg': {'length': length}
+              'name': name, 'type': type, 'cfg': cfg
             })
     else:
       norm[code] = {'alias': str(defn), 'fields': []}

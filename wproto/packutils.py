@@ -6,4 +6,4 @@ def sock_unpack(fmt, socket):
 
 def mergepacks(pack1, pack2):
   """ Merges two tuples of packing instructions into a single tuple """
-  return tuple([pack1[0]+pack2[0]]+pack1[1:]+pack2[1:])
+  return tuple([pack1[0]+pack2[0]]+list(pack1[1:])+list(pack2[1:]))

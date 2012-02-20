@@ -14,7 +14,8 @@ from struct import error as structerror
 from errno import errorcode
 
 from wproto.stream import Stream
-from wproto.message import CodeError
+from wproto.mapping import CodeError
+from wproto.message import Message
 from wshared.protocol import mapping
 
 from wserver.reactor import Reactor
@@ -29,15 +30,18 @@ class GameServer:
   clients, and receives instructions from clients.
   """
   
-  def __init__(self, action={}, response={}, notify={}, react={}):
+  def __init__(self, action=None, response=None, notify=None, react={}):
     self._action = mapping('game_action')
-    self._action.extend(mapping(action))
+    if action:
+      self._action.extend(action)
     
     self._response = mapping('game_response')
-    self._response.extend(mapping(response))
+    if response:
+      self._response.extend(response)
     
     self._notify = mapping('game_notify')
-    self._notify.extend(mapping(notify))
+    if notify:
+      self._notify.extend(notify)
     
     rmap = GAME_REACTION.copy()
     rmap.update(react)

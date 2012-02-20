@@ -29,7 +29,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: avatar; Type: TABLE; Schema: public; Owner: combat; Tablespace: 
+-- Name: avatar; Type: TABLE; Schema: public; Owner: wombat; Tablespace: 
 --
 
 CREATE TABLE avatar (
@@ -41,10 +41,10 @@ CREATE TABLE avatar (
 );
 
 
-ALTER TABLE public.avatar OWNER TO combat;
+ALTER TABLE public.avatar OWNER TO wombat;
 
 --
--- Name: avatar_id_seq; Type: SEQUENCE; Schema: public; Owner: combat
+-- Name: avatar_id_seq; Type: SEQUENCE; Schema: public; Owner: wombat
 --
 
 CREATE SEQUENCE avatar_id_seq
@@ -55,31 +55,31 @@ CREATE SEQUENCE avatar_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.avatar_id_seq OWNER TO combat;
+ALTER TABLE public.avatar_id_seq OWNER TO wombat;
 
 --
--- Name: avatar_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: combat
+-- Name: avatar_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: wombat
 --
 
 ALTER SEQUENCE avatar_id_seq OWNED BY avatar.id;
 
 
 --
--- Name: avatar_id_seq; Type: SEQUENCE SET; Schema: public; Owner: combat
+-- Name: avatar_id_seq; Type: SEQUENCE SET; Schema: public; Owner: wombat
 --
 
 SELECT pg_catalog.setval('avatar_id_seq', 5, true);
 
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: combat
+-- Name: id; Type: DEFAULT; Schema: public; Owner: wombat
 --
 
 ALTER TABLE avatar ALTER COLUMN id SET DEFAULT nextval('avatar_id_seq'::regclass);
 
 
 --
--- Data for Name: avatar; Type: TABLE DATA; Schema: public; Owner: combat
+-- Data for Name: avatar; Type: TABLE DATA; Schema: public; Owner: wombat
 --
 
 COPY avatar (id, name, world_unit, world_key, world_id) FROM stdin;
@@ -88,7 +88,7 @@ COPY avatar (id, name, world_unit, world_key, world_id) FROM stdin;
 
 
 --
--- Name: avatar_pkey; Type: CONSTRAINT; Schema: public; Owner: combat; Tablespace: 
+-- Name: avatar_pkey; Type: CONSTRAINT; Schema: public; Owner: wombat; Tablespace: 
 --
 
 ALTER TABLE ONLY avatar
