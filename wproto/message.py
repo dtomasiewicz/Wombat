@@ -5,7 +5,7 @@ class Message:
     self._data = data.copy()
     self._data.update(kwargs)
   
-  def isType(self, type):
+  def istype(self, type):
     return self.type == type
   
   def get(self, field):

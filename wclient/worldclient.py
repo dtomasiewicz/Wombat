@@ -14,10 +14,10 @@ class WorldClient(GameClient):
   def selectunit(self, unitid, unitkey):
     with self.controllock:
       res = self.control.sendrecv(Message('SelectUnit', unitid=unitid, unitkey=unitkey))
-      if res.isType('Success'):
+      if res.istype('Success'):
         self.unit = unitid
         self.debug("Unit selected: {0}".format(unitid))
-      elif res.isType('UnitInUse'):
+      elif res.istype('UnitInUse'):
         self.debug("Unit in use: {0}.".format(unitid))
       else:
         self.debug("Failed to select unit: {0}".format(unitid))

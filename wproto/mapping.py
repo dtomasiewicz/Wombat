@@ -36,7 +36,7 @@ class Mapping:
         pack = mergepacks(pack, packfn(message.get(field['name']), field['cfg']))
       return pack
     else:
-      raise CodeError(op)
+      raise MessageTypeError(message.type)
     
   def unpack(self, socket):
     op = unpack_short(socket, {})
@@ -47,12 +47,15 @@ class Mapping:
         data[field['name']] = unpackfn(socket, field['cfg'])
       return Message(self.type(op), data)
     else:
-      raise CodeError(op)
+      raise MessageCodeError(op)
 
-
-class CodeError(Exception):
+class MessageCodeError(Exception):
   def __init__(self, code):
     self.code = code
+
+class MessageTypeError(Exception):
+  def __init__(self, type):
+    self.type = type
 
 # normalizes a protocol definition in an abbreviated format to a 
 # consistent format accepted by Mapping(), and returns this normalized

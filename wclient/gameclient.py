@@ -42,10 +42,10 @@ class GameClient:
   def nstart(self, host, port):
     self.notify.connect(host, port)
     key = self.notify.recv()
-    if key.isType('NotifyKey'):
+    if key.istype('NotifyKey'):
       with self.controllock:
         res = self.control.sendrecv(Message('ClaimNotify', key=key.key))
-      if res.isType('Success'):
+      if res.istype('Success'):
         while 1:
           self.nhook(self.notify.recv())
       else:
@@ -61,7 +61,7 @@ class GameClient:
   def quit(self):
     with self.controllock:
       res = self.control.sendrecv(Message('Quit'))
-      if res.isType('Success'):
+      if res.istype('Success'):
         self.debug("Quit success.")
       else:
         self.debug("Quit failure.")
