@@ -15,7 +15,7 @@ class RQuit(Reaction):
 class RClaimNotify(Reaction):
   READONLY = False
   def react(self):
-    self.client.notify = self.client.realm.claimnotify(self.action.get('key'))
+    self.client.notify = self.client.realm.claimnotify(self.action.key)
     return Message('Success') if self.client.notify else Message('InvalidNotifyKey')
 
 

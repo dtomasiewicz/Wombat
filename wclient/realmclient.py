@@ -12,8 +12,8 @@ class RealmClient(GameClient):
     self.avatar = None
     
   def ndebug(self, n):
-    if n.alias == 'RecvMessage':
-      self.debug("[{0}]: {1}".format(n.get('avatar'), n.get('message')))
+    if n.isType('RecvMessage'):
+      self.debug("[{0}]: {1}".format(n.avatar, n.message))
     else:
       super().ndebug(n)
   
@@ -21,10 +21,10 @@ class RealmClient(GameClient):
   def selectavatar(self, avatar):
     with self.controllock:
       res = self.control.sendrecv(Message('SelectAvatar', avatar=avatar))
-      if res.alias == 'Success':
+      if res.isType('Success'):
         self.avatar = avatar
         self.debug("Avatar selected: {0}".format(avatar))
-      elif res.alias == 'AvatarInUse':
+      elif res.isType('AvatarInUse'):
         self.debug("Avatar in use: {0}.".format(avatar))
       else:
         self.debug("Failed to select avatar: {0}".format(avatar))
@@ -34,7 +34,7 @@ class RealmClient(GameClient):
   def quitavatar(self):
     with self.controllock:
       res = self.control.sendrecv(Message('QuitAvatar'))
-      if res.alias == 'Success':
+      if res.isType('Success'):
         self.avatar = None
         self.debug("Avatar quit success.")
       else:
@@ -45,10 +45,10 @@ class RealmClient(GameClient):
   def sendmessage(self, avatar, message):
     with self.controllock:
       res = self.control.sendrecv(Message('SendMessage', avatar=avatar, message=message))
-      if res.alias == 'Success':
+      if res.isType('Success'):
         self.debug("Message sent.")
-      elif res.alias == 'InvalidAvatar':
-        self.debug("Avatar does not exist: {0}".format(res.get('avatar')))
+      elif res.isType('InvalidAvatar'):
+        self.debug("Avatar does not exist: {0}".format(res.avatar))
       else:
         self.debug("Failed to send message.")
       return res

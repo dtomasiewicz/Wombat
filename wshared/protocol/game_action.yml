@@ -1,6 +1,6 @@
 ---
 0: Quit
 1:
-  alias: ClaimNotify
+  message: ClaimNotify
   fields:
     - key bytes 32

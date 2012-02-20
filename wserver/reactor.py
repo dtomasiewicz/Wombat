@@ -1,12 +1,12 @@
 class Reactor:
   def __init__(self, mapping={}):
-    self.mapping = mapping
+    self.mapping = mapping.copy()
   
   def register(self, action, reaction):
     self.mapping[action] = reaction
   
   def dispatch(self, client, action):
-    reaction = self.mapping.get(action.alias)
+    reaction = self.mapping.get(action.type)
     if reaction:
       return reaction(client, action)
     else:

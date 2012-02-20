@@ -1,11 +1,21 @@
 class Message:
-  def __init__(self, alias, data={}, **kwargs):
-    self.alias = alias
-    self.data = data.copy()
-    self.data.update(kwargs)
+  
+  def __init__(self, type, data={}, **kwargs):
+    self.type = type
+    self._data = data.copy()
+    self._data.update(kwargs)
+  
+  def isType(self, type):
+    return self.type == type
   
   def get(self, field):
-    return self.data[field] if field in self.data else None
+    return self._data[field] if field in self.data else None
+  
+  def set(self, field, value):
+    self._data[field] = value
+  
+  def __getattr__(self, field):
+    return self.get(field)
   
   def __str__(self):
-    return self.alias+" "+str(self.data)
+    return self.type+" "+str(self.data)

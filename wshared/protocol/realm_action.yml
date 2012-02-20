@@ -1,12 +1,12 @@
 ---
 100:
-  alias: SelectAvatar
+  message: SelectAvatar
   fields:
     - avatar sstr
 101: QuitAvatar
 102: GetWorldInfo
 103:
-  alias: SendMessage
+  message: SendMessage
   fields:
     - avatar sstr
     - message sstr

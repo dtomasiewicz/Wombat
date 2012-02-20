@@ -1,14 +1,14 @@
 ---
 100:
-  alias: InvalidAvatar
+  message: InvalidAvatar
   fields:
     - avatar sstr
 101:
-  alias: AvatarInUse
+  message: AvatarInUse
   fields:
     - avatar sstr
 102:
-  alias: WorldInfo
+  message: WorldInfo
   fields:
     - addr ipv4
     - cport short

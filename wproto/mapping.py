@@ -12,14 +12,14 @@ class Mapping:
   def _inverse(self):
     self.codes = {}
     for code,cfg in self.defs.items():
-      if 'alias' in cfg:
-        self.codes[cfg['alias']] = code
+      if 'type' in cfg:
+        self.codes[cfg['type']] = code
   
-  def code(self, alias):
-    return self.codes[alias] if alias in self.codes else None
+  def code(self, type):
+    return self.codes[type] if type in self.codes else None
   
-  def alias(self, code):
-    return self.defs[code]['alias'] if 'alias' in self.defs[code] else None
+  def type(self, code):
+    return self.defs[code]['type'] if 'type' in self.defs[code] else None
   
   def extend(self, other):
     for code, cfg in other.defs.items():
@@ -28,7 +28,7 @@ class Mapping:
     self.types.update(other.types)
   
   def pack(self, message):
-    op = self.code(message.alias)
+    op = self.code(message.type)
     if op in self.defs:
       pack = pack_short(op, {})
       for field in self.defs[op]['fields']:
@@ -45,7 +45,7 @@ class Mapping:
       for field in self.defs[op]['fields']:
         unpackfn = self.types[field['type']][1]
         data[field['name']] = unpackfn(socket, field['cfg'])
-      return Message(self.alias(op), data)
+      return Message(self.type(op), data)
     else:
       raise CodeError(op)
 
@@ -61,7 +61,7 @@ def normalize(defs):
   norm = {}
   for code, defn in defs.items():
     if isinstance(defn, dict):
-      norm[code] = {'alias': defn['alias'], 'fields': []}
+      norm[code] = {'type': defn['type'], 'fields': []}
       if 'fields' in defn:
         for field in defn['fields']:
           if isinstance(field, dict):
@@ -75,5 +75,5 @@ def normalize(defs):
               'name': name, 'type': type, 'cfg': cfg
             })
     else:
-      norm[code] = {'alias': str(defn), 'fields': []}
+      norm[code] = {'type': str(defn), 'fields': []}
   return norm

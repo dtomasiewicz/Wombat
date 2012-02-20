@@ -1,6 +1,6 @@
 ---
 100:
-  alias: InvalidUnit
+  message: InvalidUnit
   fields:
     - unitid int
 

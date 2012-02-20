@@ -151,7 +151,7 @@ Mapping {
   codetype: short,
   messages: {
     101(type-parsed): {
-      alias: 100 (this is type-converted)
+      type: 100 (this is type-converted)
       fields: [
         {name: avatar, type: sstr}
       ]
@@ -169,12 +169,12 @@ Mapping {
     opt1=val1 opt2=val2
 
 # for now... YAML
-<code>: <alias>
+<code>: <type>
 
 OR
 
-<code>
-  alias: <alias>
+<code>:
+  type: <type>
   fields:
     - <name1> <type1> <length1>
     - <name2> <type2> <length2>
@@ -182,12 +182,12 @@ OR
 OR
 
 <code>:
-  alias: <alias>
+  type: <type>
   fields:
     - name1 type1 length1
     - name: <field2>
       type: <type2>
-      opts:
+      cfg:
         length: <length2>
-        opt1: <val1>
-        opt2: <val2>
+        <opt1>: <val1>
+        <opt2>: <val2>

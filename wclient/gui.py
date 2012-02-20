@@ -23,8 +23,8 @@ class ClientUI:
 
   
   def nhandle(self, n):
-    if n.alias == 'RecvMessage':
-      s = "[{0}]: {1}\n".format(n.get('avatar'), n.get('message'))
+    if n.isType('RecvMessage'):
+      s = "[{0}]: {1}\n".format(n.avatar, n.message)
       tar = self.chats
     else:
       s = str(n)
@@ -50,7 +50,7 @@ class ClientUI:
 
   
   def doselectavatar(self, event):
-    if self.client.selectavatar(self.avatar.get()).alias == 'Success':
+    if self.client.selectavatar(self.avatar.get()).isType('Success'):
       self.selectavatar.destroy()
       self.showavatarui()
     else:
@@ -83,7 +83,7 @@ class ClientUI:
   def dochat(self, event):
     avatar = self.mrecip.get()
     message = self.message.get()
-    if self.client.sendmessage(avatar, message).alias == 'Success':
+    if self.client.sendmessage(avatar, message).isType('Success'):
       self.message.delete(0, END)
       self.chats.config(state=NORMAL)
       self.chats.insert(END, "To [{0}]: {1}\n".format(avatar, message))
@@ -93,7 +93,7 @@ class ClientUI:
 
   
   def doquitavatar(self):
-    if self.client.quitavatar().alias == 'Success':
+    if self.client.quitavatar().isType('Success'):
       if self.avatarui:
         self.avatarui.destroy()
         self.avatarui = None
@@ -105,7 +105,7 @@ class ClientUI:
   
   def doquit(self):
     if not self.client.avatar or self.doquitavatar():
-      if self.client.quit().alias == 'Success':
+      if self.client.quit().isType('Success'):
         self.root.quit()
         return True
       else:

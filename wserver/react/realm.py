@@ -7,9 +7,9 @@ class RSelectAvatar(Reaction):
     if self.client.avatar:
       return Message('InvalidAction')
     else:
-      a = self.client.realm.avatar(self.action.get('avatar'))
+      a = self.client.realm.avatar(self.action.avatar)
       if not a:
-        return Message('InvalidAvatar', avatar=self.action.get('avatar'))
+        return Message('InvalidAvatar', avatar=self.action.avatar)
       elif a.client:
         return Message('AvatarInUse')
       else:
@@ -45,12 +45,12 @@ class RSendMessage(Reaction):
   READONLY = True
   def react(self):
     if self.client.avatar:
-      tar = self.client.realm.avatar(self.action.get('avatar'))
+      tar = self.client.realm.avatar(self.action.avatar)
       if not tar or not tar.client or not tar.client.notify:
-        return Message('InvalidAvatar', avatar=self.action.get('avatar'))
+        return Message('InvalidAvatar', avatar=self.action.avatar)
       else:
         tar.client.notify.send(Message('RecvMessage', avatar=self.client.avatar.name,
-                                       message=self.action.get('message')))
+                                       message=self.action.message))
         return Message('Success')
     else:
       return Message('InvalidAction')

@@ -7,9 +7,9 @@ class RSelectUnit(Reaction):
     if self.client.unit:
       return Message('InvalidAction')
     else:
-      u = self.client.realm.unit(self.action.get('unitid'))
+      u = self.client.realm.unit(self.action.unitid)
       if not u:
-        return Message('InvalidUnit', unitid=self.action.get('unitid'))
+        return Message('InvalidUnit', unitid=self.action.unitid)
       elif u.client:
         return Message('UnitInUse')
       elif u.key != self.action.key:

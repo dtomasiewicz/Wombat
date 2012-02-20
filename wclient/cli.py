@@ -15,7 +15,7 @@ class ClientShell(Cmd):
   
   def do_EOF(self, line):
     print("")
-    if self.rclient.quit().alias == 'Success':
+    if self.rclient.quit().isType('Success'):
       return True
   
   def precmd(self, line):
@@ -44,9 +44,9 @@ class ClientShell(Cmd):
     parser.add_argument('avatar')
     try:
       args = parser.parse_args(split(line))
-      if self.rclient.selectavatar(args.avatar).alias == 'Success':
+      if self.rclient.selectavatar(args.avatar).isType('Success'):
         wi = self.rclient.getworldinfo()
-        if wi.alias == 'Success':
+        if wi.isType('Success'):
           self.wclient = WorldClient()
           self.wclient.start(wi.addr, wi.cport, wi.nport)
           self.wclient.selectunit(wi.unitid, wi.unitkey)
@@ -61,8 +61,8 @@ class ClientShell(Cmd):
   do_qa = do_quitavatar
   
   def do_quit(self, line):
-    if not self.wclient or self.wclient.quit().alias == 'Success':
-      if self.rclient.quit().alias == 'Success':
+    if not self.wclient or self.wclient.quit().isType('Success'):
+      if self.rclient.quit().isType('Success'):
         return True
     return False
   
