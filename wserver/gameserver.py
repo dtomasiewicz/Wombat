@@ -9,13 +9,12 @@ from socket import (socket, error as socketerror, AF_INET, SOCK_STREAM,
                     SOL_SOCKET, SO_REUSEADDR)
 from threading import Thread, Lock
 from collections import deque
-from random import randrange
 from struct import error as structerror
 from errno import errorcode
 
 from wproto.stream import Stream
-from wproto.mapping import CodeError
 from wproto.message import Message
+from wproto.mapping import MessageCodeError
 from wshared.protocol import mapping
 
 from wserver.reactor import Reactor
@@ -97,7 +96,7 @@ class GameServer:
             del self._idle[fileno]
             thread = Thread(target=self._clientdata, args=[client])
           else:
-            raise Exception("Unrecognized select: {0}".format(fd))
+            raise Exception("Unrecognized select: {0}".format(fileno))
         waitfor.append(thread)
         thread.start()
       
@@ -164,8 +163,8 @@ class GameServer:
     try:
       reaction = self._reactor.dispatch(client, client.control.recv())
       
-    except (CodeError, socketerror, structerror) as e:
-      if isinstance(e, CodeError):
+    except (MessageCodeError, socketerror, structerror) as e:
+      if isinstance(e, MessageCodeError):
         client.debug("Received invalid message code: {0}".format(e.code))
       elif isinstance(e, socketerror):
         client.debug("{0} occurred during message reception".format(errorcode[e.errno]))

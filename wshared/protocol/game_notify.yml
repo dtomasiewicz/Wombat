@@ -1,5 +1,5 @@
 ---
 0:
-  message: NotifyKey
+  type: NotifyKey
   fields:
     - key bytes 32

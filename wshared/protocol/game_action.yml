@@ -1,6 +1,6 @@
 ---
 0: Quit
 1:
-  message: ClaimNotify
+  type: ClaimNotify
   fields:
     - key bytes 32

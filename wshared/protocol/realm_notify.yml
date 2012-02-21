@@ -1,6 +1,6 @@
 ---
 100:
-  message: RecvMessage
+  type: RecvMessage
   fields:
     - avatar sstr
     - message sstr

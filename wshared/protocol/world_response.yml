@@ -1,6 +1,6 @@
 ---
 100:
-  message: InvalidUnit
+  type: InvalidUnit
   fields:
     - unitid int
 

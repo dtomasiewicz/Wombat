@@ -1,14 +1,14 @@
 ---
 100:
-  message: InvalidAvatar
+  type: InvalidAvatar
   fields:
     - avatar sstr
 101:
-  message: AvatarInUse
+  type: AvatarInUse
   fields:
     - avatar sstr
 102:
-  message: WorldInfo
+  type: WorldInfo
   fields:
     - addr ipv4
     - cport short

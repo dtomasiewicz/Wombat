@@ -1,6 +1,6 @@
 ---
 100:
-  message: SelectUnit
+  type: SelectUnit
   fields:
     - unitid int
     - key bytes 32

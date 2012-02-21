@@ -9,7 +9,7 @@ class Message:
     return self.type == type
   
   def get(self, field):
-    return self._data[field] if field in self.data else None
+    return self._data[field] if field in self._data else None
   
   def set(self, field, value):
     self._data[field] = value
@@ -18,4 +18,4 @@ class Message:
     return self.get(field)
   
   def __str__(self):
-    return self.type+" "+str(self.data)
+    return self.type+" "+str(self._data)

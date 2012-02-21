@@ -29,7 +29,7 @@ class Mapping:
   
   def pack(self, message):
     op = self.code(message.type)
-    if op in self.defs:
+    if op != None:
       pack = pack_short(op, {})
       for field in self.defs[op]['fields']:
         packfn = self.types[field['type']][0]
@@ -52,31 +52,11 @@ class Mapping:
 class MessageCodeError(Exception):
   def __init__(self, code):
     self.code = code
+  def __str__(self):
+    return "Invalid message code: {0}".format(self.code)
 
 class MessageTypeError(Exception):
   def __init__(self, type):
     self.type = type
-
-# normalizes a protocol definition in an abbreviated format to a 
-# consistent format accepted by Mapping(), and returns this normalized
-# form. everything is deep-copied.
-def normalize(defs):
-  norm = {}
-  for code, defn in defs.items():
-    if isinstance(defn, dict):
-      norm[code] = {'type': defn['type'], 'fields': []}
-      if 'fields' in defn:
-        for field in defn['fields']:
-          if isinstance(field, dict):
-            name, type = field['name'], field['type']
-            cfg = field['cfg'] if 'cfg' in field else {}
-            norm[code]['fields'].append({'name': name, 'type': type, 'cfg': cfg})
-          else:
-            name, type, *rest = field.split(' ')
-            cfg = {'length': int(rest[0])} if len(rest) else {}
-            norm[code]['fields'].append({
-              'name': name, 'type': type, 'cfg': cfg
-            })
-    else:
-      norm[code] = {'type': str(defn), 'fields': []}
-  return norm
+  def __str__(self):
+    return "Invalid message type: {0}".format(self.type)

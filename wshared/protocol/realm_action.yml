@@ -1,12 +1,12 @@
 ---
 100:
-  message: SelectAvatar
+  type: SelectAvatar
   fields:
     - avatar sstr
 101: QuitAvatar
 102: GetWorldInfo
 103:
-  message: SendMessage
+  type: SendMessage
   fields:
     - avatar sstr
     - message sstr
