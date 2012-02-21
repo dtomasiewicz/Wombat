@@ -2,14 +2,17 @@ from time import time
 from struct import pack
 from socket import socket, error, AF_INET, SOCK_STREAM
 
+from wproto.mapping import Mapping
+
 class Stream:
   """
-  Wraps a connected socket for transmission translation as specified by send
-  and receive protol descriptions.
+  Wraps a socket for sending and receiving Message objects as specified in the
+  given send/receive Mappings. 
   """
+  
   def __init__(self, send=None, recv=None, sock=None, host=None, port=None):
-    self.sendmap = send
-    self.recvmap = recv
+    self.sendmap = send if send else Mapping()
+    self.recvmap = recv if recv else Mapping()
     
     if sock:
       self._socket = sock
@@ -51,7 +54,6 @@ class Stream:
     """
     Both sends a Message and receives a response Message, which is
     returned.
-    TODO: rewrite this for new type/map system
     """
     self.send(message)
     return self.recv()

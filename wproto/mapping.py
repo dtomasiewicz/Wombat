@@ -4,12 +4,12 @@ from wproto.packutils import mergepacks
 from wproto.message import Message
 
 class Mapping:
-  def __init__(self, defs, types = BASE_TYPES):
-    self.types = types
+  def __init__(self, defs={}, types=BASE_TYPES):
+    self.types = types.copy()
     self.defs = deepcopy(defs)
-    self._inverse()
+    self._invert()
   
-  def _inverse(self):
+  def _invert(self):
     self.codes = {}
     for code,cfg in self.defs.items():
       if 'type' in cfg:
@@ -24,7 +24,7 @@ class Mapping:
   def extend(self, other):
     for code, cfg in other.defs.items():
       self.defs[code] = cfg
-    self._inverse()
+    self._invert()
     self.types.update(other.types)
   
   def pack(self, message):

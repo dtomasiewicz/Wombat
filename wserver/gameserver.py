@@ -62,11 +62,13 @@ class GameServer:
   
   
   def debug(self, message):
-    print(message)
+    print("SRV: {0}".format(message))
     
   
   def start(self, host='127.0.0.1', cport=10000, nport=10001, backlog=5,
             ntimeout=5, pollrate=.001):
+    self.debug("starting")
+    
     self.host = host
     self.cport = cport
     self.nport = nport
@@ -74,13 +76,17 @@ class GameServer:
     # listens for incoming control connections
     self._clisten.bind((host, cport))
     self._clisten.listen(backlog)
+    self.debug("listening for control connections")
     
     # listens for incoming notify connections
     self._nlisten.bind((host, nport))
     self._nlisten.listen(backlog)
+    self.debug("listening for notify connections")
     
     self._poll.register(self._clisten.fileno(), POLLIN)
     self._poll.register(self._nlisten.fileno(), POLLIN)
+    
+    self.debug("beginning socket poll loop")
     
     while 1:
       waitfor = []
@@ -105,6 +111,7 @@ class GameServer:
       
       # all wait threads finished; process queue synchronously
       self._processqueue()
+    print("Here")
   
   
   def queue(self, event):
@@ -115,10 +122,12 @@ class GameServer:
   def addclient(self, client):
     self._clients.add(client)
     self.idleclient(client)
+    client.debug("connected")
   
   
   def removeclient(self, client):
     self._clients.remove(client)
+    client.debug("disconnected")
     client.realm = None
     client.control.close()
     client.control = None

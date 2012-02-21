@@ -2,5 +2,5 @@
 100:
   type: SelectUnit
   fields:
-    - unitid int
+    - id int
     - key bytes 32

@@ -2,7 +2,6 @@ from wserver.reactor import Reaction
 from wproto.message import Message
 
 class RSelectAvatar(Reaction):
-  READONLY = False
   def react(self):
     if self.client.avatar:
       return Message('InvalidAction')
@@ -15,16 +14,15 @@ class RSelectAvatar(Reaction):
       else:
         self.client.avatar = a
         a.client = self.client
-        return Message('Success')
+        return True
 
 
 class RQuitAvatar(Reaction):
-  READONLY = False
   def react(self):
     if self.client.avatar:
       self.client.avatar.client = None
       self.client.avatar = None
-      return Message('Success')
+      return True
     else:
       return Message('InvalidAction')
 
@@ -51,7 +49,7 @@ class RSendMessage(Reaction):
       else:
         tar.client.notify.send(Message('RecvMessage', avatar=self.client.avatar.name,
                                        message=self.action.message))
-        return Message('Success')
+        return True
     else:
       return Message('InvalidAction')
 

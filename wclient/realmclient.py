@@ -10,6 +10,9 @@ class RealmClient(GameClient):
     super().__init__(mapping('realm_action'), mapping('realm_response'),
                      mapping('realm_notify'))
     self.avatar = None
+  
+  def debug(self, msg):
+    super().debug("RLM: "+msg)
     
   def ndebug(self, n):
     if n.istype('RecvMessage'):

@@ -21,4 +21,4 @@ class Client:
   
   def debug(self, msg):
     """ Sends client-relevant debugging info to the server. """
-    self.realm.debug("{0}: {1}".format(self.identity(), msg))
+    self.realm.debug("CLI[{0}]: {1}".format(self.identity(), msg))

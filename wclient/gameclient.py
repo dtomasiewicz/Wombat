@@ -54,7 +54,7 @@ class GameClient:
       self.debug("Failed to receive ClaimKey on notify connection.")
   
   
-  def ndebug():
+  def ndebug(self, n):
     self.debug("Received notification: {0}".format(n.__class__))
   
     

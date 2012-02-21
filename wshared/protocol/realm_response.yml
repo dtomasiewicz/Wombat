@@ -3,10 +3,7 @@
   type: InvalidAvatar
   fields:
     - avatar sstr
-101:
-  type: AvatarInUse
-  fields:
-    - avatar sstr
+101: AvatarInUse
 102:
   type: WorldInfo
   fields:

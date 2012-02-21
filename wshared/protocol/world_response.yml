@@ -2,7 +2,7 @@
 100:
   type: InvalidUnit
   fields:
-    - unitid int
+    - id int
 
 101: InvalidKey
 

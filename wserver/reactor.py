@@ -1,3 +1,5 @@
+from wproto.message import Message
+
 class Reactor:
   def __init__(self, mapping={}):
     self.mapping = mapping.copy()
@@ -15,20 +17,28 @@ class Reactor:
 
 class Reaction:
   """ An event that handles a client action. """
-  READONLY = None
+  READONLY = False
   
   def __init__(self, client, action):
     self.client = client
     self.action = action
+    self.disconnect = False
     
   def process(self):
     res = self.react()
+    if res == True:
+      res = Message("Success")
+    
     if res:
       self.client.debug("{0} => {1}".format(self.action, res))
       self.client.control.send(res)
-      self.client.realm.idleclient(self.client)
     else:
+      self.client.debug("{0} => (no response generated)".format(self.action))
+    
+    if self.disconnect:
       self.client.realm.removeclient(self.client)
+    else:
+      self.client.realm.idleclient(self.client)
   
   def react(self):
     raise Exception("Must extend Reaction.react in subclasses.")

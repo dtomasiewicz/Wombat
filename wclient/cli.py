@@ -15,8 +15,9 @@ class ClientShell(Cmd):
   
   def do_EOF(self, line):
     print("")
-    if self.rclient.quit().istype('Success'):
-      return True
+    if not self.rclient.quit().istype('Success'):
+      print("(quit was not successful)")
+    return True
   
   def precmd(self, line):
     if len(self.rclient.debugs) or (self.wclient and len(self.wclient.debugs)):
@@ -46,10 +47,12 @@ class ClientShell(Cmd):
       args = parser.parse_args(split(line))
       if self.rclient.selectavatar(args.avatar).istype('Success'):
         wi = self.rclient.getworldinfo()
-        if wi.istype('Success'):
+        if wi.istype('WorldInfo'):
           self.wclient = WorldClient()
           self.wclient.start(wi.addr, wi.cport, wi.nport)
           self.wclient.selectunit(wi.unitid, wi.unitkey)
+        else:
+          raise Exception("Unexpected {0} (expecting WorldInfo)".format(wi.type))
     except SystemExit:
       pass
   
