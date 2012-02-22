@@ -4,3 +4,4 @@
   fields:
     - id int
     - key bytes 32
+101: QuitUnit

@@ -1,5 +1,10 @@
-from threading import Thread, Lock
-
+try:
+  from select import epoll as poll, EPOLLIN as POLLIN
+except:
+  # for non-linux, use standard python polling object
+  from select import poll, POLLIN
+from collections import deque
+  
 from wproto.stream import Stream
 from wproto.message import Message
 from wshared.protocol import mapping
@@ -9,61 +14,89 @@ class GameClient:
   
   
   def __init__(self, action=None, response=None, notify=None):
-    actmap = mapping('game_action')
+    amap = mapping('game_action')
     if action:
-      actmap.extend(action)
+      amap.extend(action)
     
-    resmap = mapping('game_response')
+    rmap = mapping('game_response')
     if response:
-      resmap.extend(response)
+      rmap.extend(response)
     
-    notmap = mapping('game_notify')
+    nmap = mapping('game_notify')
     if notify:
-      notmap.extend(notify)
+      nmap.extend(notify)
     
-    self.control = Stream(send=actmap, recv=resmap)
-    self.notify = Stream(recv=notmap)
-    self.controllock = Lock()
+    self.control = Stream(send=amap, recv=rmap)
+    self.notify = Stream(recv=nmap)
+    self._handlers = deque()
+    self._poll = poll()
+    
     self.debugs = []
     self.nhook = self.ndebug
+    
+    self.destroyed = False
   
   
+  def update(self):
+    poll = self._poll.poll(0)
+    while len(poll) > 0:
+      
+      for fileno, event in poll:
+        self._poll.unregister(fileno)
+        if fileno == self.control.fileno():
+          res = self.control.recv()
+          handler = self._handlers.popleft()
+          if handler:
+            handler(res)
+        elif fileno == self.notify.fileno():
+          notify = self.notify.recv()
+          if notify.istype('NotifyKey'):
+            self.control.send(Message('ClaimNotify', key=notify.key))
+            self._handlers.append(self.hclaimnotify)
+          else:
+            self.nhook(notify)
+        else:
+          raise Exception("Unexpected polling object")
+        
+        if self.destroyed:
+          break
+        else:
+          self._poll.register(fileno, POLLIN)
+      
+      if self.destroyed:
+        break
+      else:
+        poll = self._poll.poll(0)
+  
+  
+  def hclaimnotify(self, res):
+    if res.istype('Success'):
+      self.debug('Notify connection claimed successfully.')
+    else:
+      self.debug('Failed to claim notify connection: {0}'.format(res))
+    
+    
   def debug(self, msg):
     self.debugs.append(msg)
   
   
   def start(self, host, cport, nport):
     self.control.connect(host, cport)
-    nt = Thread(target=self.nstart, args=(host, nport))
-    nt.daemon = True
-    nt.start()
+    self._poll.register(self.control.fileno(), POLLIN)
+    self.notify.connect(host, nport)
+    self._poll.register(self.notify.fileno(), POLLIN)
   
   
-  def nstart(self, host, port):
-    self.notify.connect(host, port)
-    key = self.notify.recv()
-    if key.istype('NotifyKey'):
-      with self.controllock:
-        res = self.control.sendrecv(Message('ClaimNotify', key=key.key))
-      if res.istype('Success'):
-        while 1:
-          self.nhook(self.notify.recv())
-      else:
-        self.debug("Failed to claim notify connection.")
-    else:
-      self.debug("Failed to receive ClaimKey on notify connection.")
-  
+  def destroy(self):
+    self.destroyed = True
+    self.control.close()
+    self.notify.close()
+    
   
   def ndebug(self, n):
-    self.debug("Received notification: {0}".format(n.__class__))
+    self.debug("Notification: {0}".format(n.__class__))
   
     
-  def quit(self):
-    with self.controllock:
-      res = self.control.sendrecv(Message('Quit'))
-      if res.istype('Success'):
-        self.debug("Quit success.")
-      else:
-        self.debug("Quit failure.")
-      return res
-
+  def quit(self, handler):
+    self.control.send(Message('Quit'))
+    self._handlers.append(handler)

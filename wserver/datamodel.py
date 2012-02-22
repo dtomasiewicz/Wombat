@@ -88,8 +88,8 @@ class Model:
     where, *params = Model._parsewhere(where, params, kwconds)
     return Model._modelgen(cls, source, source.prepare(sql + where).rows(*params))
 
-  
-  def _parsewhere(where, params, kwconds):
+  @classmethod
+  def _parsewhere(cls, where, params, kwconds):
     conds = []
     if where:
       conds = [where]
@@ -99,7 +99,7 @@ class Model:
     sql = " WHERE " + " AND ".join(conds) if len(conds) else ""
     return (sql,) + tuple(params)
 
-  
+  @classmethod
   def _modelgen(cls, source, results):
     for row in results:
       yield cls(source, row)

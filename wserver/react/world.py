@@ -19,6 +19,17 @@ class RSelectUnit(Reaction):
         return True
 
 
+class RQuitUnit(Reaction):
+  def react(self):
+    if self.client.unit:
+      self.client.unit.client = None
+      self.client.unit = None
+      return True
+    else:
+      return Message('InvalidAction')
+
+
 WORLD_REACTION = {
-  'SelectUnit': RSelectUnit
+  'SelectUnit': RSelectUnit,
+  'QuitUnit': RQuitUnit
 }

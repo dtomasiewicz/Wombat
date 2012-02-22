@@ -19,6 +19,7 @@ class Stream:
     else:
       self._socket = socket(AF_INET, SOCK_STREAM)
     
+    
     self.host = host
     self.port = port
     self.last_send = None
@@ -26,6 +27,7 @@ class Stream:
   
   def connect(self, host, port):
     self._socket.connect((host, port))
+    self._socket.setblocking(0)
     self.host = host
     self.port = port
   
@@ -50,13 +52,6 @@ class Stream:
     """
     return self.recvmap.unpack(self._socket)
   
-  def sendrecv(self, message):
-    """
-    Both sends a Message and receives a response Message, which is
-    returned.
-    """
-    self.send(message)
-    return self.recv()
   
   def fileno(self):
     """ Allows the Stream object to be used with select(). """

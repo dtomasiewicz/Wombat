@@ -9,10 +9,11 @@ class RealmClient(GameClient):
   def __init__(self):
     super().__init__(mapping('realm_action'), mapping('realm_response'),
                      mapping('realm_notify'))
-    self.avatar = None
+  
   
   def debug(self, msg):
     super().debug("RLM: "+msg)
+  
     
   def ndebug(self, n):
     if n.istype('RecvMessage'):
@@ -21,43 +22,22 @@ class RealmClient(GameClient):
       super().ndebug(n)
   
   
-  def selectavatar(self, avatar):
-    with self.controllock:
-      res = self.control.sendrecv(Message('SelectAvatar', avatar=avatar))
-      if res.istype('Success'):
-        self.avatar = avatar
-        self.debug("Avatar selected: {0}".format(avatar))
-      elif res.istype('AvatarInUse'):
-        self.debug("Avatar in use: {0}.".format(avatar))
-      else:
-        self.debug("Failed to select avatar: {0}".format(avatar))
-      return res
+  def selectavatar(self, avatar, handler):
+    self.control.send(Message('SelectAvatar', avatar=avatar))
+    self._handlers.append(handler)
   
   
-  def quitavatar(self):
-    with self.controllock:
-      res = self.control.sendrecv(Message('QuitAvatar'))
-      if res.istype('Success'):
-        self.avatar = None
-        self.debug("Avatar quit success.")
-      else:
-        self.debug("Avatar quit failure.")
-      return res
+  def quitavatar(self, handler):
+    self.control.send(Message('QuitAvatar'))
+    self._handlers.append(handler)
   
   
-  def sendmessage(self, avatar, message):
-    with self.controllock:
-      res = self.control.sendrecv(Message('SendMessage', avatar=avatar, message=message))
-      if res.istype('Success'):
-        self.debug("Message sent.")
-      elif res.istype('InvalidAvatar'):
-        self.debug("Avatar does not exist: {0}".format(res.avatar))
-      else:
-        self.debug("Failed to send message.")
-      return res
+  def sendmessage(self, avatar, message, handler):
+    self.control.send(Message('SendMessage', avatar=avatar, message=message))
+    self._handlers.append(handler)
   
   
-  def getworldinfo(self):
-    with self.controllock:
-      return self.control.sendrecv(Message('GetWorldInfo'))
+  def getworldinfo(self, handler):
+    self.control.send(Message('GetWorldInfo'))
+    self._handlers.append(handler)
 
