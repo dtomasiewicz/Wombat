@@ -12,64 +12,125 @@ class ClientShell(Cmd):
     super().__init__()
     self.rclient = rclient
     self.wclient = None
-  
-  def do_EOF(self, line):
-    print("")
-    if not self.rclient.quit().istype('Success'):
-      print("(quit was not successful)")
-    return True
-  
-  def precmd(self, line):
-    if len(self.rclient.debugs) or (self.wclient and len(self.wclient.debugs)):
-      print("=== NEW NOTIFICATIONS SINCE PREVIOUS COMMAND ===")
-      self.dumpdebug()
-      print("================================================")
-    return line
-  
-  def postcmd(self, stop, line):
-    self.dumpdebug()
-    return stop
-  
-  def emptyline(self):
-    pass
+    self.avatar = None
+    self.unit = None
+    
     
   def dumpdebug(self):
     while len(self.rclient.debugs):
-      print(self.rclient.debugs.pop(0))
+      print("RLM: "+self.rclient.debugs.pop(0))
     if self.wclient:
       while len(self.wclient.debugs):
-        print(self.wclient.debugs.pop(0))
+        print("WLD: "+self.wclient.debugs.pop(0))
+    
+  
+  def do_EOF(self, line):
+    print("")
+    self.rclient.quit()
+    return True
+  
+  
+  def precmd(self, line):
+    self.rclient.update()
+    if self.wclient:
+      self.wclient.update()
+    if len(self.rclient.debugs) or (self.wclient and len(self.wclient.debugs)):
+      print("=== NEW NOTIFICATIONS SINCE PREVIOUS COMMAND ===")
+      self.dumpdebug()
+      print("================ COMMAND OUTPUT ================")
+    return line
+  
+  
+  def postcmd(self, stop, line):
+    if stop:
+      if self.wclient:
+        self.wclient.destroy()
+        self.wclient = None
+      self.rclient.destroy()
+      self.rclient = None
+    return stop
+  
+  
+  def emptyline(self):
+    pass
+  
   
   def do_selectavatar(self, line):
     parser = ArgumentParser(description="Choose your avatar!")
     parser.add_argument('avatar')
     try:
       args = parser.parse_args(split(line))
-      if self.rclient.selectavatar(args.avatar).istype('Success'):
-        wi = self.rclient.getworldinfo()
-        if wi.istype('WorldInfo'):
-          self.wclient = WorldClient()
-          self.wclient.start(wi.addr, wi.cport, wi.nport)
-          self.wclient.selectunit(wi.unitid, wi.unitkey)
-        else:
-          raise Exception("Unexpected {0} (expecting WorldInfo)".format(wi.type))
+      res = self.rclient.selectavatar(args.avatar)
+      if res.istype('Success'):
+        self._startworld()
+      else:
+        print("AvatarSelect failed: {0}".format(res))
     except SystemExit:
       pass
   
   do_sa = do_selectavatar
   
+  
+  def _startworld(self):
+    res = self.rclient.getworldinfo()
+    if res.istype('WorldInfo'):
+      self.wclient = WorldClient()
+      self.wclient.start(res.addr, res.cport, res.nport, True)
+      self._selectunit(res.unitid, res.unitkey)
+    else:
+      raise Exception("Unexpected {0} (expecting WorldInfo)".format(res))
+    
+  
+  
+  def _selectunit(self, id, key):
+    res = self.wclient.selectunit(id, key)
+    if res.istype('Success'):
+      self.unit = id
+    else:
+      raise Exception("Failed to select unit: {0}".format(res))
+    
+  
   def do_quitavatar(self, line):
-    self.rclient.quitavatar()
+    res = self.wclient.quitunit()
+    if res.istype('Success'):
+      self.unit = None
+      self._quitworld()
+    else:
+      raise Exception("QuitUnit failed: {0}".format(res))
   
   do_qa = do_quitavatar
   
+  
+  def _quitworld(self):
+    res = self.wclient.quit()
+    if res.istype('Success'):
+      self.wclient.destroy()
+      self.wclient = None
+      self._quitavatar()
+    else:
+      raise Exception("Failed to Quit world: {0}".format(res))
+  
+  
+  def _quitavatar(self):
+    res = self.rclient.quitavatar()
+    if res.istype('Success'):
+      self.avatar = None
+    else:
+      raise Exception("QuitAvatar failed: {0}".format(res))
+    
+  
   def do_quit(self, line):
-    if not self.wclient or self.wclient.quit().istype('Success'):
-      if self.rclient.quit().istype('Success'):
-        return True
-    return False
+    res = self.rclient.quit()
+    if res.istype('Success'):
+      self.rclient.destroy()
+      self.rclient = None
+      return True
+    else:
+      print("Quit failed: {0}".format(res))
+      return False
   
   do_exit = do_q = do_quit
+  
   
   def do_msg(self, line):
     parser = ArgumentParser(description="Send a message to another avatar.")
@@ -77,7 +138,9 @@ class ClientShell(Cmd):
     parser.add_argument('message')
     try:
       args = parser.parse_args(split(line))
-      self.rclient.sendmessage(args.avatar, args.message)
+      res = self.rclient.sendmessage(args.avatar, args.message)
+      if not res.istype('Success'):
+        print("SendMessage failed: {0}".format(res))
     except SystemExit:
       pass
       

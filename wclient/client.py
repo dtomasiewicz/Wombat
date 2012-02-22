@@ -11,11 +11,11 @@ parser.add_argument('-c', type=int, default=10000)
 parser.add_argument('-n', type=int, default=10001)
 args = parser.parse_args()
 client = RealmClient()
-client.start(args.r, args.c, args.n)
+client.start(args.r, args.c, args.n, not args.g)
 
 if args.g:
-  from gui import ClientUI
+  from wclient.gui import ClientUI
   ClientUI(client).start()
 else:
-  from cli import ClientShell
+  from wclient.cli import ClientShell
   ClientShell(client).cmdloop()

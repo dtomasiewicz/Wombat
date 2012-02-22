@@ -10,10 +10,6 @@ class RealmClient(GameClient):
     super().__init__(mapping('realm_action'), mapping('realm_response'),
                      mapping('realm_notify'))
   
-  
-  def debug(self, msg):
-    super().debug("RLM: "+msg)
-  
     
   def ndebug(self, n):
     if n.istype('RecvMessage'):
@@ -22,22 +18,18 @@ class RealmClient(GameClient):
       super().ndebug(n)
   
   
-  def selectavatar(self, avatar, handler):
-    self.control.send(Message('SelectAvatar', avatar=avatar))
-    self._handlers.append(handler)
+  def selectavatar(self, avatar, handler=None):
+    return self.act(Message('SelectAvatar', avatar=avatar), handler)
   
   
-  def quitavatar(self, handler):
-    self.control.send(Message('QuitAvatar'))
-    self._handlers.append(handler)
+  def quitavatar(self, handler=None):
+    return self.act(Message('QuitAvatar'), handler)
   
   
-  def sendmessage(self, avatar, message, handler):
-    self.control.send(Message('SendMessage', avatar=avatar, message=message))
-    self._handlers.append(handler)
+  def sendmessage(self, avatar, message, handler=None):
+    return self.act(Message('SendMessage', avatar=avatar, message=message), handler)
   
   
-  def getworldinfo(self, handler):
-    self.control.send(Message('GetWorldInfo'))
-    self._handlers.append(handler)
+  def getworldinfo(self, handler=None):
+    return self.act(Message('GetWorldInfo'), handler)
 

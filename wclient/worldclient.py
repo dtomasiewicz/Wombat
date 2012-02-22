@@ -10,15 +10,10 @@ class WorldClient(GameClient):
     super().__init__(mapping('world_action'), mapping('world_response'),
                      mapping('world_notify'))
   
-  def debug(self, msg):
-    super().debug("WLD: "+msg)
+  
+  def selectunit(self, id, key, handler=None):
+    return self.act(Message('SelectUnit', id=id, key=key), handler)
   
   
-  def selectunit(self, id, key, handler):
-    self.control.send(Message('SelectUnit', id=id, key=key))
-    self._handlers.append(handler)
-  
-  
-  def quitunit(self, handler):
-    self.control.send(Message('QuitUnit'))
-    self._handlers.append(handler)
+  def quitunit(self, handler=None):
+    return self.act(Message('QuitUnit'), handler)

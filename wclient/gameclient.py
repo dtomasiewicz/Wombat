@@ -51,8 +51,7 @@ class GameClient:
         elif fileno == self.notify.fileno():
           notify = self.notify.recv()
           if notify.istype('NotifyKey'):
-            self.control.send(Message('ClaimNotify', key=notify.key))
-            self._handlers.append(self.hclaimnotify)
+            self.act(Message('ClaimNotify', key=notify.key), self.hclaimnotify)
           else:
             self.nhook(notify)
         else:
@@ -70,9 +69,7 @@ class GameClient:
   
   
   def hclaimnotify(self, res):
-    if res.istype('Success'):
-      self.debug('Notify connection claimed successfully.')
-    else:
+    if not res.istype('Success'):
       self.debug('Failed to claim notify connection: {0}'.format(res))
     
     
@@ -80,10 +77,13 @@ class GameClient:
     self.debugs.append(msg)
   
   
-  def start(self, host, cport, nport):
+  def start(self, host, cport, nport, cblock=False):
     self.control.connect(host, cport)
-    self._poll.register(self.control.fileno(), POLLIN)
+    self.control.setblocking(cblock)
+    if not cblock:
+      self._poll.register(self.control.fileno(), POLLIN)
     self.notify.connect(host, nport)
+    self.notify.setblocking(0)
     self._poll.register(self.notify.fileno(), POLLIN)
   
   
@@ -96,7 +96,16 @@ class GameClient:
   def ndebug(self, n):
     self.debug("Notification: {0}".format(n.__class__))
   
+  
+  def act(self, message, handler):
+    self.control.send(message)
+    if self.control.getblocking():
+      response = self.control.recv()
+      return handler(response) if handler else response
+    else:
+      self._handlers.append(handler)
+      return None
     
-  def quit(self, handler):
-    self.control.send(Message('Quit'))
-    self._handlers.append(handler)
+    
+  def quit(self, handler=None):
+    return self.act(Message('Quit'), handler)

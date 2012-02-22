@@ -1,6 +1,5 @@
-from time import time
 from struct import pack
-from socket import socket, error, AF_INET, SOCK_STREAM
+from socket import socket, AF_INET, SOCK_STREAM
 
 from wproto.mapping import Mapping
 
@@ -19,15 +18,11 @@ class Stream:
     else:
       self._socket = socket(AF_INET, SOCK_STREAM)
     
-    
     self.host = host
     self.port = port
-    self.last_send = None
-    self.last_recv = None
   
   def connect(self, host, port):
     self._socket.connect((host, port))
-    self._socket.setblocking(0)
     self.host = host
     self.port = port
   
@@ -56,3 +51,10 @@ class Stream:
   def fileno(self):
     """ Allows the Stream object to be used with select(). """
     return self._socket.fileno()
+  
+  
+  def setblocking(self, blocking):
+    self._socket.setblocking(1 if blocking else 0)
+    
+  def getblocking(self):
+    return self._socket.gettimeout() == None
